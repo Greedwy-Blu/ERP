@@ -29,6 +29,8 @@ import type {
   CreateAuthDto,
   CreateFuncionarioDto,
   CreateGestorDto,
+  CreateHistoricoProducaoDto,
+  CreateMotivoInterrupcaoDto,
   CreateOrderDto,
   CreateProductDto,
   CreateSectorDto,
@@ -41,6 +43,7 @@ import type {
   TrackOrderDto,
   UpdateFuncionarioDto,
   UpdateGestorDto,
+  UpdateHistoricoProducaoDto,
   UpdateProductDto,
   UpdateSectorDto
 } from './model'
@@ -165,6 +168,68 @@ export const useOrdersControllerCreate = <TError = AxiosError<unknown>,
       return useMutation(mutationOptions);
     }
     
+/**
+ * @summary Listar todos os pedidos
+ */
+export const ordersControllerFindAll = (
+     options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.get(
+      `/orders`,options
+    );
+  }
+
+
+export const getOrdersControllerFindAllQueryKey = () => {
+    return [`/orders`] as const;
+    }
+
+    
+export const getOrdersControllerFindAllQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerFindAll>>, TError = AxiosError<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindAll>>, TError, TData>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getOrdersControllerFindAllQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerFindAll>>> = ({ signal }) => ordersControllerFindAll({ signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindAll>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type OrdersControllerFindAllQueryResult = NonNullable<Awaited<ReturnType<typeof ordersControllerFindAll>>>
+export type OrdersControllerFindAllQueryError = AxiosError<unknown>
+
+
+/**
+ * @summary Listar todos os pedidos
+ */
+
+export function useOrdersControllerFindAll<TData = Awaited<ReturnType<typeof ordersControllerFindAll>>, TError = AxiosError<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindAll>>, TError, TData>, axios?: AxiosRequestConfig}
+
+  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getOrdersControllerFindAllQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
 /**
  * @summary Iniciar o rastreamento de uma ordem
  */
@@ -658,6 +723,688 @@ export const useOrdersControllerAtualizarStatus = <TError = AxiosError<unknown>,
       > => {
 
       const mutationOptions = getOrdersControllerAtualizarStatusMutationOptions(options);
+
+      return useMutation(mutationOptions);
+    }
+    
+/**
+ * @summary Obter detalhes de um pedido por ID
+ */
+export const ordersControllerFindOne = (
+    id: number, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.get(
+      `/orders/${id}`,options
+    );
+  }
+
+
+export const getOrdersControllerFindOneQueryKey = (id: number,) => {
+    return [`/orders/${id}`] as const;
+    }
+
+    
+export const getOrdersControllerFindOneQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerFindOne>>, TError = AxiosError<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindOne>>, TError, TData>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getOrdersControllerFindOneQueryKey(id);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerFindOne>>> = ({ signal }) => ordersControllerFindOne(id, { signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindOne>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type OrdersControllerFindOneQueryResult = NonNullable<Awaited<ReturnType<typeof ordersControllerFindOne>>>
+export type OrdersControllerFindOneQueryError = AxiosError<void>
+
+
+/**
+ * @summary Obter detalhes de um pedido por ID
+ */
+
+export function useOrdersControllerFindOne<TData = Awaited<ReturnType<typeof ordersControllerFindOne>>, TError = AxiosError<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindOne>>, TError, TData>, axios?: AxiosRequestConfig}
+
+  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getOrdersControllerFindOneQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Listar todos os motivos de interrupção
+ */
+export const ordersControllerListMotivosInterrupcao = (
+     options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.get(
+      `/orders/motivos-interrupcao`,options
+    );
+  }
+
+
+export const getOrdersControllerListMotivosInterrupcaoQueryKey = () => {
+    return [`/orders/motivos-interrupcao`] as const;
+    }
+
+    
+export const getOrdersControllerListMotivosInterrupcaoQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError = AxiosError<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError, TData>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getOrdersControllerListMotivosInterrupcaoQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>> = ({ signal }) => ordersControllerListMotivosInterrupcao({ signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type OrdersControllerListMotivosInterrupcaoQueryResult = NonNullable<Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>>
+export type OrdersControllerListMotivosInterrupcaoQueryError = AxiosError<unknown>
+
+
+/**
+ * @summary Listar todos os motivos de interrupção
+ */
+
+export function useOrdersControllerListMotivosInterrupcao<TData = Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError = AxiosError<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError, TData>, axios?: AxiosRequestConfig}
+
+  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getOrdersControllerListMotivosInterrupcaoQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Adicionar um novo motivo de interrupção
+ */
+export const ordersControllerCreateMotivoInterrupcao = (
+    createMotivoInterrupcaoDto: CreateMotivoInterrupcaoDto, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.post(
+      `/orders/motivos-interrupcao`,
+      createMotivoInterrupcaoDto,options
+    );
+  }
+
+
+
+export const getOrdersControllerCreateMotivoInterrupcaoMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>, TError,{data: CreateMotivoInterrupcaoDto}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>, TError,{data: CreateMotivoInterrupcaoDto}, TContext> => {
+    
+const mutationKey = ['ordersControllerCreateMotivoInterrupcao'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>, {data: CreateMotivoInterrupcaoDto}> = (props) => {
+          const {data} = props ?? {};
+
+          return  ordersControllerCreateMotivoInterrupcao(data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OrdersControllerCreateMotivoInterrupcaoMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>>
+    export type OrdersControllerCreateMotivoInterrupcaoMutationBody = CreateMotivoInterrupcaoDto
+    export type OrdersControllerCreateMotivoInterrupcaoMutationError = AxiosError<unknown>
+
+    /**
+ * @summary Adicionar um novo motivo de interrupção
+ */
+export const useOrdersControllerCreateMotivoInterrupcao = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>, TError,{data: CreateMotivoInterrupcaoDto}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationResult<
+        Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>,
+        TError,
+        {data: CreateMotivoInterrupcaoDto},
+        TContext
+      > => {
+
+      const mutationOptions = getOrdersControllerCreateMotivoInterrupcaoMutationOptions(options);
+
+      return useMutation(mutationOptions);
+    }
+    
+/**
+ * @summary Criar um novo registro no histórico de produção
+ */
+export const ordersControllerCreateHistoricoProducao = (
+    createHistoricoProducaoDto: CreateHistoricoProducaoDto, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.post(
+      `/orders/historico-producao`,
+      createHistoricoProducaoDto,options
+    );
+  }
+
+
+
+export const getOrdersControllerCreateHistoricoProducaoMutationOptions = <TError = AxiosError<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>, TError,{data: CreateHistoricoProducaoDto}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>, TError,{data: CreateHistoricoProducaoDto}, TContext> => {
+    
+const mutationKey = ['ordersControllerCreateHistoricoProducao'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>, {data: CreateHistoricoProducaoDto}> = (props) => {
+          const {data} = props ?? {};
+
+          return  ordersControllerCreateHistoricoProducao(data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OrdersControllerCreateHistoricoProducaoMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>>
+    export type OrdersControllerCreateHistoricoProducaoMutationBody = CreateHistoricoProducaoDto
+    export type OrdersControllerCreateHistoricoProducaoMutationError = AxiosError<void>
+
+    /**
+ * @summary Criar um novo registro no histórico de produção
+ */
+export const useOrdersControllerCreateHistoricoProducao = <TError = AxiosError<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>, TError,{data: CreateHistoricoProducaoDto}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationResult<
+        Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>,
+        TError,
+        {data: CreateHistoricoProducaoDto},
+        TContext
+      > => {
+
+      const mutationOptions = getOrdersControllerCreateHistoricoProducaoMutationOptions(options);
+
+      return useMutation(mutationOptions);
+    }
+    
+/**
+ * @summary Atualizar um registro no histórico de produção
+ */
+export const ordersControllerUpdateHistoricoProducao = (
+    id: number,
+    updateHistoricoProducaoDto: UpdateHistoricoProducaoDto, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.put(
+      `/orders/historico-producao/${id}`,
+      updateHistoricoProducaoDto,options
+    );
+  }
+
+
+
+export const getOrdersControllerUpdateHistoricoProducaoMutationOptions = <TError = AxiosError<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>, TError,{id: number;data: UpdateHistoricoProducaoDto}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>, TError,{id: number;data: UpdateHistoricoProducaoDto}, TContext> => {
+    
+const mutationKey = ['ordersControllerUpdateHistoricoProducao'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>, {id: number;data: UpdateHistoricoProducaoDto}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  ordersControllerUpdateHistoricoProducao(id,data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OrdersControllerUpdateHistoricoProducaoMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>>
+    export type OrdersControllerUpdateHistoricoProducaoMutationBody = UpdateHistoricoProducaoDto
+    export type OrdersControllerUpdateHistoricoProducaoMutationError = AxiosError<void>
+
+    /**
+ * @summary Atualizar um registro no histórico de produção
+ */
+export const useOrdersControllerUpdateHistoricoProducao = <TError = AxiosError<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>, TError,{id: number;data: UpdateHistoricoProducaoDto}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationResult<
+        Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>,
+        TError,
+        {id: number;data: UpdateHistoricoProducaoDto},
+        TContext
+      > => {
+
+      const mutationOptions = getOrdersControllerUpdateHistoricoProducaoMutationOptions(options);
+
+      return useMutation(mutationOptions);
+    }
+    
+/**
+ * @summary Listar histórico de produção de um pedido
+ */
+export const ordersControllerListHistoricoProducao = (
+    id: number, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.get(
+      `/orders/${id}/historico-producao`,options
+    );
+  }
+
+
+export const getOrdersControllerListHistoricoProducaoQueryKey = (id: number,) => {
+    return [`/orders/${id}/historico-producao`] as const;
+    }
+
+    
+export const getOrdersControllerListHistoricoProducaoQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError = AxiosError<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError, TData>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getOrdersControllerListHistoricoProducaoQueryKey(id);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>> = ({ signal }) => ordersControllerListHistoricoProducao(id, { signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type OrdersControllerListHistoricoProducaoQueryResult = NonNullable<Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>>
+export type OrdersControllerListHistoricoProducaoQueryError = AxiosError<void>
+
+
+/**
+ * @summary Listar histórico de produção de um pedido
+ */
+
+export function useOrdersControllerListHistoricoProducao<TData = Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError = AxiosError<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError, TData>, axios?: AxiosRequestConfig}
+
+  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getOrdersControllerListHistoricoProducaoQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Listar todos os rastreamentos de uma ordem
+ */
+export const ordersControllerListRastreamentosByOrder = (
+    id: number, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.get(
+      `/orders/${id}/rastreamentos`,options
+    );
+  }
+
+
+export const getOrdersControllerListRastreamentosByOrderQueryKey = (id: number,) => {
+    return [`/orders/${id}/rastreamentos`] as const;
+    }
+
+    
+export const getOrdersControllerListRastreamentosByOrderQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError = AxiosError<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError, TData>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getOrdersControllerListRastreamentosByOrderQueryKey(id);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>> = ({ signal }) => ordersControllerListRastreamentosByOrder(id, { signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type OrdersControllerListRastreamentosByOrderQueryResult = NonNullable<Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>>
+export type OrdersControllerListRastreamentosByOrderQueryError = AxiosError<void>
+
+
+/**
+ * @summary Listar todos os rastreamentos de uma ordem
+ */
+
+export function useOrdersControllerListRastreamentosByOrder<TData = Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError = AxiosError<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError, TData>, axios?: AxiosRequestConfig}
+
+  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getOrdersControllerListRastreamentosByOrderQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Criar um novo usuário
+ */
+export const authControllerRegister = (
+    createAuthDto: CreateAuthDto, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.post(
+      `/auth/register`,
+      createAuthDto,options
+    );
+  }
+
+
+
+export const getAuthControllerRegisterMutationOptions = <TError = AxiosError<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerRegister>>, TError,{data: CreateAuthDto}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof authControllerRegister>>, TError,{data: CreateAuthDto}, TContext> => {
+    
+const mutationKey = ['authControllerRegister'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authControllerRegister>>, {data: CreateAuthDto}> = (props) => {
+          const {data} = props ?? {};
+
+          return  authControllerRegister(data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AuthControllerRegisterMutationResult = NonNullable<Awaited<ReturnType<typeof authControllerRegister>>>
+    export type AuthControllerRegisterMutationBody = CreateAuthDto
+    export type AuthControllerRegisterMutationError = AxiosError<void>
+
+    /**
+ * @summary Criar um novo usuário
+ */
+export const useAuthControllerRegister = <TError = AxiosError<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerRegister>>, TError,{data: CreateAuthDto}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationResult<
+        Awaited<ReturnType<typeof authControllerRegister>>,
+        TError,
+        {data: CreateAuthDto},
+        TContext
+      > => {
+
+      const mutationOptions = getAuthControllerRegisterMutationOptions(options);
+
+      return useMutation(mutationOptions);
+    }
+    
+/**
+ * @summary Fazer login
+ */
+export const authControllerLogin = (
+    loginDto: LoginDto, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.post(
+      `/auth/login`,
+      loginDto,options
+    );
+  }
+
+
+
+export const getAuthControllerLoginMutationOptions = <TError = AxiosError<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerLogin>>, TError,{data: LoginDto}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof authControllerLogin>>, TError,{data: LoginDto}, TContext> => {
+    
+const mutationKey = ['authControllerLogin'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authControllerLogin>>, {data: LoginDto}> = (props) => {
+          const {data} = props ?? {};
+
+          return  authControllerLogin(data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AuthControllerLoginMutationResult = NonNullable<Awaited<ReturnType<typeof authControllerLogin>>>
+    export type AuthControllerLoginMutationBody = LoginDto
+    export type AuthControllerLoginMutationError = AxiosError<void>
+
+    /**
+ * @summary Fazer login
+ */
+export const useAuthControllerLogin = <TError = AxiosError<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerLogin>>, TError,{data: LoginDto}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationResult<
+        Awaited<ReturnType<typeof authControllerLogin>>,
+        TError,
+        {data: LoginDto},
+        TContext
+      > => {
+
+      const mutationOptions = getAuthControllerLoginMutationOptions(options);
+
+      return useMutation(mutationOptions);
+    }
+    
+/**
+ * @summary Obter informações do usuário autenticado
+ */
+export const authControllerGetProfile = (
+     options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.get(
+      `/auth/me`,options
+    );
+  }
+
+
+export const getAuthControllerGetProfileQueryKey = () => {
+    return [`/auth/me`] as const;
+    }
+
+    
+export const getAuthControllerGetProfileQueryOptions = <TData = Awaited<ReturnType<typeof authControllerGetProfile>>, TError = AxiosError<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof authControllerGetProfile>>, TError, TData>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAuthControllerGetProfileQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof authControllerGetProfile>>> = ({ signal }) => authControllerGetProfile({ signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof authControllerGetProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type AuthControllerGetProfileQueryResult = NonNullable<Awaited<ReturnType<typeof authControllerGetProfile>>>
+export type AuthControllerGetProfileQueryError = AxiosError<void>
+
+
+/**
+ * @summary Obter informações do usuário autenticado
+ */
+
+export function useAuthControllerGetProfile<TData = Awaited<ReturnType<typeof authControllerGetProfile>>, TError = AxiosError<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof authControllerGetProfile>>, TError, TData>, axios?: AxiosRequestConfig}
+
+  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getAuthControllerGetProfileQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Validar token de acesso
+ */
+export const authControllerValidateToken = (
+     options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.post(
+      `/auth/validate-token`,undefined,options
+    );
+  }
+
+
+
+export const getAuthControllerValidateTokenMutationOptions = <TError = AxiosError<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerValidateToken>>, TError,void, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof authControllerValidateToken>>, TError,void, TContext> => {
+    
+const mutationKey = ['authControllerValidateToken'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authControllerValidateToken>>, void> = () => {
+          
+
+          return  authControllerValidateToken(axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AuthControllerValidateTokenMutationResult = NonNullable<Awaited<ReturnType<typeof authControllerValidateToken>>>
+    
+    export type AuthControllerValidateTokenMutationError = AxiosError<void>
+
+    /**
+ * @summary Validar token de acesso
+ */
+export const useAuthControllerValidateToken = <TError = AxiosError<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerValidateToken>>, TError,void, TContext>, axios?: AxiosRequestConfig}
+): UseMutationResult<
+        Awaited<ReturnType<typeof authControllerValidateToken>>,
+        TError,
+        void,
+        TContext
+      > => {
+
+      const mutationOptions = getAuthControllerValidateTokenMutationOptions(options);
 
       return useMutation(mutationOptions);
     }
@@ -1965,189 +2712,3 @@ export const useSectorsControllerAddConfig = <TError = AxiosError<unknown>,
       return useMutation(mutationOptions);
     }
     
-/**
- * @summary Criar um novo usuário
- */
-export const authControllerRegister = (
-    createAuthDto: CreateAuthDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/auth/register`,
-      createAuthDto,options
-    );
-  }
-
-
-
-export const getAuthControllerRegisterMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerRegister>>, TError,{data: CreateAuthDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof authControllerRegister>>, TError,{data: CreateAuthDto}, TContext> => {
-    
-const mutationKey = ['authControllerRegister'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authControllerRegister>>, {data: CreateAuthDto}> = (props) => {
-          const {data} = props ?? {};
-
-          return  authControllerRegister(data,axiosOptions)
-        }
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type AuthControllerRegisterMutationResult = NonNullable<Awaited<ReturnType<typeof authControllerRegister>>>
-    export type AuthControllerRegisterMutationBody = CreateAuthDto
-    export type AuthControllerRegisterMutationError = AxiosError<void>
-
-    /**
- * @summary Criar um novo usuário
- */
-export const useAuthControllerRegister = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerRegister>>, TError,{data: CreateAuthDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationResult<
-        Awaited<ReturnType<typeof authControllerRegister>>,
-        TError,
-        {data: CreateAuthDto},
-        TContext
-      > => {
-
-      const mutationOptions = getAuthControllerRegisterMutationOptions(options);
-
-      return useMutation(mutationOptions);
-    }
-    
-/**
- * @summary Fazer login
- */
-export const authControllerLogin = (
-    loginDto: LoginDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/auth/login`,
-      loginDto,options
-    );
-  }
-
-
-
-export const getAuthControllerLoginMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerLogin>>, TError,{data: LoginDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof authControllerLogin>>, TError,{data: LoginDto}, TContext> => {
-    
-const mutationKey = ['authControllerLogin'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authControllerLogin>>, {data: LoginDto}> = (props) => {
-          const {data} = props ?? {};
-
-          return  authControllerLogin(data,axiosOptions)
-        }
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type AuthControllerLoginMutationResult = NonNullable<Awaited<ReturnType<typeof authControllerLogin>>>
-    export type AuthControllerLoginMutationBody = LoginDto
-    export type AuthControllerLoginMutationError = AxiosError<void>
-
-    /**
- * @summary Fazer login
- */
-export const useAuthControllerLogin = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerLogin>>, TError,{data: LoginDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationResult<
-        Awaited<ReturnType<typeof authControllerLogin>>,
-        TError,
-        {data: LoginDto},
-        TContext
-      > => {
-
-      const mutationOptions = getAuthControllerLoginMutationOptions(options);
-
-      return useMutation(mutationOptions);
-    }
-    
-/**
- * @summary Obter informações do usuário autenticado
- */
-export const authControllerGetProfile = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.get(
-      `/auth/me`,options
-    );
-  }
-
-
-export const getAuthControllerGetProfileQueryKey = () => {
-    return [`/auth/me`] as const;
-    }
-
-    
-export const getAuthControllerGetProfileQueryOptions = <TData = Awaited<ReturnType<typeof authControllerGetProfile>>, TError = AxiosError<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof authControllerGetProfile>>, TError, TData>, axios?: AxiosRequestConfig}
-) => {
-
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getAuthControllerGetProfileQueryKey();
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof authControllerGetProfile>>> = ({ signal }) => authControllerGetProfile({ signal, ...axiosOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof authControllerGetProfile>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type AuthControllerGetProfileQueryResult = NonNullable<Awaited<ReturnType<typeof authControllerGetProfile>>>
-export type AuthControllerGetProfileQueryError = AxiosError<void>
-
-
-/**
- * @summary Obter informações do usuário autenticado
- */
-
-export function useAuthControllerGetProfile<TData = Awaited<ReturnType<typeof authControllerGetProfile>>, TError = AxiosError<void>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof authControllerGetProfile>>, TError, TData>, axios?: AxiosRequestConfig}
-
-  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getAuthControllerGetProfileQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  query.queryKey = queryOptions.queryKey ;
-
-  return query;
-}
-
-
-
-

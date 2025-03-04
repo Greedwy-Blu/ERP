@@ -12,6 +12,8 @@ export interface Auth {
   id: number;
   code: string;
   password: string;
+  accessToken?: string;
+  tokenExpiresAt?: string;
   role: string;
   funcionario?: Funcionario;
   gestao?: Gestao;
