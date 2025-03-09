@@ -10,8 +10,55 @@ module.exports = {
     ],
     presets: [require("nativewind/preset")],
     theme: {
-      extend: {},
+      extend: {
+        animation: {
+          load1: 'load1 7.2s ease infinite',
+          load2: 'load2 7.2s ease 0.6s infinite',
+          load3: 'load3 7.2s ease 1.2s infinite',
+          load4: 'load4 7.2s ease 1.8s infinite',
+          load5: 'load5 7.2s ease 2.4s infinite',
+          load6: 'load6 7.2s ease 3s infinite',
+        },
+        keyframes: {
+          load1: {
+            '0%': { bottom: '0', height: '0' },
+            '6.944444444%': { bottom: '0', height: '100%' },
+            '50%': { top: '0', height: '100%' },
+            '59.944444433%': { top: '0', height: '0' },
+          },
+          load2: {
+            '0%': { top: '0', height: '0' },
+            '6.944444444%': { top: '0', height: '100%' },
+            '50%': { bottom: '0', height: '100%' },
+            '59.944444433%': { bottom: '0', height: '0' },
+          },
+          load3: {
+            '0%': { top: '0', height: '0' },
+            '6.944444444%': { top: '0', height: '100%' },
+            '50%': { bottom: '0', height: '100%' },
+            '59.94444443%': { bottom: '0', height: '0' },
+          },
+          load4: {
+            '0%': { top: '0', height: '0' },
+            '6.944444444%': { top: '0', height: '100%' },
+            '50%': { bottom: '0', height: '100%' },
+            '59.94444443%': { bottom: '0', height: '0' },
+          },
+          load5: {
+            '0%': { bottom: '0', height: '0' },
+            '6.944444444%': { bottom: '0', height: '100%' },
+            '50%': { top: '0', height: '100%' },
+            '59.94444443%': { top: '0', height: '0' },
+          },
+          load6: {
+            '0%': { bottom: '0', height: '0' },
+            '6.944444444%': { bottom: '0', height: '100%' },
+            '50%': { top: '0', height: '100%' },
+            '59.94444443%': { top: '0', height: '0' },
+          },
+        },
+      },
     },
-    plugins: [],
+    plugins: [require("daisyui")],
   };
   
