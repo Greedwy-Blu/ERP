@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -8,7 +8,8 @@ import {
   SafeAreaView,
   ScrollView,
   useWindowDimensions,
-  Dimensions
+  Dimensions,
+  ImageBackground
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -16,10 +17,33 @@ import Animated, {
   useSharedValue, 
   withSpring, 
   useAnimatedStyle, 
-  runOnJS 
+  runOnJS, 
+  withTiming
 } from 'react-native-reanimated';
+import { useFocusEffect } from '@react-navigation/native';
+import Svg, { Path } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
+
+const CurvedSection = ({ children, backgroundColor = '#FFFFFF', curveColor = '#0A4F3C' }) => {
+  return (
+    <View style={[styles.sectionContainer, { backgroundColor }]}>
+      {children}
+      
+      <Svg
+        width={width}
+        height={60}
+        viewBox={`0 0 ${width} 60`}
+        style={styles.sectionCurve}
+      >
+        <Path
+          d={`M0,0 Q${width / 2},60 ${width},0 L${width},60 L0,60 Z`}
+          fill={curveColor}
+        />
+      </Svg>
+    </View>
+  );
+};
 
 const SolariumApp = () => {
   const router = useRouter();
@@ -28,47 +52,58 @@ const SolariumApp = () => {
   const scrollViewRef = useRef(null);
   
   // Animação do botão
-  
-  // Valores animados
   const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
-  const buttonScaleX = useSharedValue(1);
-  const buttonScaleY = useSharedValue(1);
+  const buttonScale = useSharedValue(1);
+  const buttonColor = useSharedValue('#4FD1C5');
 
-  // Estilos animados
+  useFocusEffect(
+    useCallback(() => {
+      const resetAnimations = () => {
+        translateX.value = 0;
+        opacity.value = 1;
+        buttonScale.value = 1;
+        buttonColor.value = '#4FD1C5';
+      };
+      resetAnimations();
+      return () => {};
+    }, [])
+  );
+
   const animatedTextStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
     opacity: opacity.value
   }));
 
   const animatedButtonStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scaleX: buttonScaleX.value },
-      { scaleY: buttonScaleY.value }
-    ]
+    transform: [{ scale: buttonScale.value }],
+    backgroundColor: buttonColor.value,
+    borderRadius: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 120
   }));
 
   const handlePress = () => {
-    // 1ª fase: animação do texto
-    translateX.value = withSpring(-width, { 
-      damping: 5, 
-      stiffness: 100 
-    });
-    opacity.value = withSpring(0, { 
-      damping: 5, 
-      stiffness: 100 
-    });
+    translateX.value = 0;
+    opacity.value = 1;
+    buttonScale.value = 1;
+    buttonColor.value = '#4FD1C5';
+    
+    translateX.value = withSpring(-width, { damping: 5, stiffness: 100 });
+    opacity.value = withSpring(0, { damping: 5, stiffness: 100 });
 
-    // 2ª fase: animação do botão
-    buttonScaleX.value = withSpring(
+    buttonScale.value = withSpring(
       width / 50, 
-      { damping: 5, stiffness: 100 }, 
+      { damping: 5, stiffness: 100 },
       (finished) => {
         if (finished) {
-          // 3ª fase: animação final
-          buttonScaleY.value = withSpring(
+          buttonColor.value = withTiming('#10B981');
+          buttonScale.value = withSpring(
             height / 10, 
-            { damping: 10, stiffness: 250 }, 
+            { damping: 10, stiffness: 250 },
             (finished) => {
               if (finished) {
                 runOnJS(router.push)('/carregamento');
@@ -101,16 +136,16 @@ const SolariumApp = () => {
   };
 
   const OverviewSection = () => (
-    <View style={styles.sectionContainer}>
+    <CurvedSection>
       <Text style={[styles.sectionTitle, { fontSize: responsiveStyles.fontSizeTitle }]}>
-        O Desafio da Solaris Manufacturing
+        O Desafio do Solarium
       </Text>
       <Text style={[styles.sectionText, { fontSize: responsiveStyles.fontSizeBase }]}>
-        No coração de uma grande indústria metalúrgica, a Solaris Manufacturing enfrentava um problema crítico: a falta de visibilidade em tempo real sobre a produção. Os gestores não sabiam exatamente quantas peças estavam sendo produzidas, onde os gargalos ocorriam ou quais funcionários estavam mais produtivos.
-      </Text>
+      No ecossistema das indústrias metalúrgicas emergentes, a lacuna entre capacidade produtiva potencial e desempenho real persiste como desafio crítico. O Solarium surge como solução epistêmica, redefinindo os paradigmas do apontamento industrial através de uma abordagem sistêmica que integra:
+         </Text>
       
       <Image
-        source={{ uri: 'https://images.unsplash.com/photo-1597852074816-d933c7d2b988' }}
+        source={require('@/assets/images/industria.jpg')}
         style={[styles.contentImage, { height: responsiveStyles.imageHeight }]}
         resizeMode="cover"
       />
@@ -118,17 +153,16 @@ const SolariumApp = () => {
       <Text style={[styles.sectionText, { fontSize: responsiveStyles.fontSizeBase }]}>
         Os apontamentos eram feitos em planilhas manuais, sujeitos a erros e atrasos. Foi então que nasceu o SOLARIUM — um Sistema de Apontamento de Produção Inteligente, desenvolvido para trazer transparência, eficiência e controle total sobre o chão de fábrica.
       </Text>
-    </View>
+    </CurvedSection>
   );
 
   const SolutionSection = () => (
-    <View style={styles.sectionContainer}>
+    <CurvedSection curveColor="#1E40AF">
       <Text style={[styles.sectionTitle, { fontSize: responsiveStyles.fontSizeTitle }]}>
         O Nascimento do SOLARIUM
       </Text>
       <Text style={[styles.sectionText, { fontSize: responsiveStyles.fontSizeBase }]}>
-        A Solaris Manufacturing contratou uma equipe de especialistas em automação industrial para criar uma solução que eliminasse os problemas de rastreamento. O desafio era grande:
-      </Text>
+      O Solarium surgiu para resolver problemas comuns em indústrias metalúrgicas emergentes, como: </Text>
       
       <View style={styles.bulletList}>
         <View style={styles.bulletItem}>
@@ -176,11 +210,11 @@ const SolariumApp = () => {
           <Text style={styles.pillarText}>Dashboard em tempo real com alertas automáticos</Text>
         </View>
       </View>
-    </View>
+    </CurvedSection>
   );
 
   const HowItWorksSection = () => (
-    <View style={styles.sectionContainer}>
+    <CurvedSection backgroundColor="#F8FAFC" curveColor="#10B981">
       <Text style={[styles.sectionTitle, { fontSize: responsiveStyles.fontSizeTitle }]}>
         Como o SOLARIUM Funciona?
       </Text>
@@ -193,7 +227,7 @@ const SolariumApp = () => {
           <View style={styles.stepContent}>
             <Text style={styles.stepTitle}>O Operador Chega ao Posto de Trabalho</Text>
             <Text style={styles.stepText}>
-              Escaneia seu crachá (RFID ou QR Code) no terminal SOLARIUM. O sistema identifica quem está operando e quais ordens de produção estão atribuídas a ele.
+              Digite o codigo e sua no terminal ou aparelho que foi instaldo o SOLARIUM. O sistema identifica quem está operando e quais ordens de produção estão atribuídas a ele.
             </Text>
           </View>
         </View>
@@ -241,16 +275,16 @@ const SolariumApp = () => {
           <View style={styles.stepContent}>
             <Text style={styles.stepTitle}>Relatórios Automatizados</Text>
             <Text style={styles.stepText}>
-              Ao final do turno, o SOLARIUM gera relatórios de produtividade, análise de gargalos e sugestões de melhorias.
+              Ao final do turno, o SOLARIUM gera relatórios de produtividade.
             </Text>
           </View>
         </View>
       </View>
-    </View>
+    </CurvedSection>
   );
 
   const ImpactSection = () => (
-    <View style={styles.sectionContainer}>
+    <CurvedSection curveColor="#115E59">
       <Text style={[styles.sectionTitle, { fontSize: responsiveStyles.fontSizeTitle }]}>
         Impacto do SOLARIUM na Solaris Manufacturing
       </Text>
@@ -279,105 +313,100 @@ const SolariumApp = () => {
       
       <View style={styles.testimonial}>
         <Text style={styles.testimonialText}>
-          "Antes, a produção era uma caixa-preta. Agora, com o SOLARIUM, temos controle total."
+          "Trazer clareza, controle e confiança para as operações industriais por meio da tecnologia."
         </Text>
         <Text style={styles.testimonialAuthor}>
-          — Carlos Mendes, Supervisor de Produção da Solaris
+        Transformamos o apontamento de produção — muitas vezes ignorado ou tratado como burocracia — em uma fonte poderosa de verdade operacional.
+        {'\n'}
+        Porque no Solarium, apontar não é anotar — é enxergar.
         </Text>
       </View>
-    </View>
+    </CurvedSection>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={[
-          styles.scrollContainer,
-          { 
-            paddingHorizontal: responsiveStyles.paddingHorizontal,
-            paddingVertical: responsiveStyles.paddingVertical
-          }
-        ]}
+        contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
+        <ImageBackground
+          source={require('@/assets/images/background.png')}
+          style={styles.fullBackground}
+          resizeMode="cover"
+        >
+          <View style={styles.absoluteLogoContainer}>
             <View style={styles.iconCircle}>
-            <Image 
-            source={require('@/assets/images/logo-icon.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />  </View>
+              <Image 
+                source={require('@/assets/images/logo-icon.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.logoText}>SOLARIUM</Text>
           </View>
-        </View>
 
-        {/* Seção de Boas-Vindas */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>BEM VINDO AO SOLARIUM</Text>
-          <Image 
-            source={require('@/assets/images/logo-icon.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-          <Text style={styles.welcomeSubtitle}>O SEU SISTEMA DE APONTAMENTO</Text>
-          <Text style={styles.welcomeText}>
-            Potencialize sua gestão: nosso app simplifica processos e eleva a produtividade da sua equipe
-          </Text>
-        </View>
-
-        {/* Botão Animado */}
-        <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
-          <Animated.View style={[styles.button, animatedButtonStyle]}>
-            <Animated.Text style={[styles.buttonText, animatedTextStyle]}>
-              INICIAR
-            </Animated.Text>
-          </Animated.View>
-        </TouchableOpacity>
-
-        {/* Navegação */}
-        <View style={styles.navigation}>
-          <TouchableOpacity 
-            style={[styles.navButton, currentSection === 'overview' && styles.activeNavButton]}
-            onPress={() => changeSection('overview')}
-          >
-            <Text style={[styles.navButtonText, currentSection === 'overview' && styles.activeNavButtonText]}>Visão Geral</Text>
-          </TouchableOpacity>
           
-          <TouchableOpacity 
-            style={[styles.navButton, currentSection === 'solution' && styles.activeNavButton]}
-            onPress={() => changeSection('solution')}
-          >
-            <Text style={[styles.navButtonText, currentSection === 'solution' && styles.activeNavButtonText]}>A Solução</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.navButton, currentSection === 'how-it-works' && styles.activeNavButton]}
-            onPress={() => changeSection('how-it-works')}
-          >
-            <Text style={[styles.navButtonText, currentSection === 'how-it-works' && styles.activeNavButtonText]}>Como Funciona</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.navButton, currentSection === 'impact' && styles.activeNavButton]}
-            onPress={() => changeSection('impact')}
-          >
-            <Text style={[styles.navButtonText, currentSection === 'impact' && styles.activeNavButtonText]}>Resultados</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Conteúdo Principal */}
-        {currentSection === 'overview' && <OverviewSection />}
-        {currentSection === 'solution' && <SolutionSection />}
-        {currentSection === 'how-it-works' && <HowItWorksSection />}
-        {currentSection === 'impact' && <ImpactSection />}
+          <View style={styles.mainTextContainer}>
+            <Text style={styles.mainTitle}>
+              PRESERVANDO{'\n'}
+              <Text style={{color: '#006A71'}}>HERANÇAS</Text>{'\n'}
+              CONSTRUINDO{'\n'}
+              FUTUROS.
+            </Text>
+          </View>
+        </ImageBackground>
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>SOLARIUM - Sistema de Gestão Industrial</Text>
-          <Text style={styles.footerSubtext}>© 2023 Solaris Manufacturing</Text>
+        <View style={styles.contentWrapper}>
+          <View style={styles.welcomeSection}>
+            <Text style={styles.welcomeTitle}>BEM VINDO AO SOLARIUM</Text>
+            <Image 
+              source={require('@/assets/images/solorium-logo.png')}
+              style={styles.welcomeLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.welcomeSubtitle}>GESTÃO DE APONTAMENTO{'\n'}ALIADA A VALORES INDUSTRIAIS</Text>
+            <Text style={styles.welcomeText}>
+              Potencialize sua gestão: nosso app simplifica processos e eleva a produtividade da sua equipe
+            </Text>
+          </View>
+
+          <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
+            <Animated.View style={[styles.button, animatedButtonStyle]}>
+              <Animated.Text style={[styles.buttonText, animatedTextStyle]}>
+                INICIAR
+              </Animated.Text>
+            </Animated.View>
+          </TouchableOpacity>
+
+          <View style={styles.navigation}>
+            {['overview', 'solution', 'how-it-works', 'impact'].map((section) => (
+              <TouchableOpacity 
+                key={section}
+                style={[styles.navButton, currentSection === section && styles.activeNavButton]}
+                onPress={() => changeSection(section)}
+              >
+                <Text style={[styles.navButtonText, currentSection === section && styles.activeNavButtonText]}>
+                  {section === 'overview' && 'Visão Geral'}
+                  {section === 'solution' && 'A Solução'}
+                  {section === 'how-it-works' && 'Como Funciona'}
+                  {section === 'impact' && 'Resultados'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {currentSection === 'overview' && <OverviewSection />}
+          {currentSection === 'solution' && <SolutionSection />}
+          {currentSection === 'how-it-works' && <HowItWorksSection />}
+          {currentSection === 'impact' && <ImpactSection />}
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>SOLARIUM - Sistema de apontamento Industrial</Text>
+            <Text style={styles.footerSubtext}>© 2025 Solaris Manufacturing</Text>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -391,7 +420,114 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 40,
+  },
+  fullBackground: {
+    width: '100%',
+    height: height * 0.9,
+  },
+  absoluteLogoContainer: {
+    position: 'absolute',
+    top: height * 0.05,
+    left: width * 0.05,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  topTextContainer: {
+    position: 'absolute',
+    top: height * 0.05,
+    right: width * 0.05,
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  mainTextContainer: {
+    position: 'absolute',
+    bottom: height * 0.1,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  contentWrapper: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    backgroundColor: '#FFFFFF',
+  },
+  sectionContainer: {
+    position: 'relative',
+    padding: 20,
+    paddingBottom: 80,
+    marginBottom: -40,
+  },
+  sectionCurve: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  iconCircle: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 100,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoImage: {
+    width: 30,
+    height: 30,
+  },
+  logoText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  topText: {
+    fontSize: 16,
+    color: '#1F2937',
+    fontWeight: '600',
+  },
+  mainTitle: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    lineHeight: 40,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 5,
+  },
+  welcomeSection: {
+    alignItems: 'center',
+    marginBottom: 30,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    elevation: 3,
+  },
+  welcomeLogo: {
+    width: 500,
+    height: 200,
+    marginVertical: 15,
+  },
+  welcomeTitle: {
+    color: '#115E59',
+    fontSize: 24,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  welcomeSubtitle: {
+    color: '#134E4A',
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 15,
+    lineHeight: 24,
+  },
+  welcomeText: {
+    color: '#4B5563',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   button: {
     backgroundColor: '#4FD1C5',
@@ -400,78 +536,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 120
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    paddingTop: 20,
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  iconCircle: {
-   
-    borderRadius: 20,
-    padding: 12,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoText: {
-    color: '#1F2937',
-    fontWeight: '800',
-    fontSize: 24,
-    letterSpacing: 1,
-  },
-  welcomeSection: {
-    alignItems: 'center',
-    marginBottom: 40,
-    marginTop: 20,
-  },
-  welcomeTitle: {
-    color: '#115E59',
-    fontSize: 24,
-    fontWeight: '900',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  logoImage: {
-    width: 80,
-    height: 80,
-    marginBottom: 20,
-  },
-  welcomeSubtitle: {
-    color: '#134E4A',
-    fontSize: 20,
-    fontWeight: '900',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  welcomeText: {
-    color: '#4B5563',
-    fontSize: 16,
-    textAlign: 'center',
-    marginHorizontal: 40,
-    lineHeight: 24,
-  },
-  buttonContainer: {
-    marginVertical: 30,
-    alignItems: 'center',
-  },
-  animatedButton: {
-    backgroundColor: '#4FD1C5',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 150,
+    minWidth: 120,
+    marginVertical: 20,
+    alignSelf: 'center',
   },
   buttonText: {
     color: 'white',
@@ -500,9 +567,6 @@ const styles = StyleSheet.create({
   },
   activeNavButtonText: {
     color: '#1E40AF',
-  },
-  sectionContainer: {
-    marginBottom: 40,
   },
   sectionTitle: {
     fontWeight: '800',

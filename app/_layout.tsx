@@ -1,23 +1,15 @@
 import { Stack } from 'expo-router';
 import { View } from 'react-native';
 
-export default function Layout() {
+export default function RootLayout() {
   return (
-    <View className='bg-slate-50'>
-    <Stack>
-      <Stack.Screen
-        name="(tab)/index"
-        options={{ headerShown: false }} // Oculta o cabeçalho na tela inicial
-      />
-      <Stack.Screen
-        name="carregamento"
-        options={{ headerShown: false }} // Oculta o cabeçalho na tela de carregamento
-      />
-      <Stack.Screen
-        name="+not_found"
-        options={{ headerShown: false }} // Oculta o cabeçalho na tela de página não encontrada
-      />
-    </Stack>
+    <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+      <Stack>
+        <Stack.Screen name="(tabs)/index" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)/carregamento" options={{ headerShown: false }} />
+        <Stack.Screen name="(login)/index" options={{ headerShown: false }} />
+        <Stack.Screen name="+not-found" options={{ headerShown: false }} />
+      </Stack>
     </View>
   );
 }

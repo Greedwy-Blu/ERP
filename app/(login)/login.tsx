@@ -1,10 +1,10 @@
 import { View } from 'react-native';
-import Welcome from '@/screens/Welcome'; // Ajuste o caminho
+import LoginScreen from '@/screens/Login'; // Ajuste o caminho
 
-export default function HomeScreen() {
+export default function Login() {
   return (
     <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-      <Welcome />
+      <LoginScreen />
     </View>
   );
 }

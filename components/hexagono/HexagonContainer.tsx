@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, View, StyleSheet } from 'react-native';
+import { Image, View, StyleSheet, Text } from 'react-native';
 import AnimaCircular from './animacaoCircular';
 import Anima from './animcao';
 
@@ -18,11 +18,13 @@ export default function HexagonMask() {
 
         return (
           <View key={index} style={styles.absolute}>
+            <Text>
             <AnimaCircular radius={radius} duration={duration} initialAngle={initialAngle} offset={offset}>
               <Anima>
                
               </Anima>
             </AnimaCircular>
+            </Text>
           </View>
         );
       })}

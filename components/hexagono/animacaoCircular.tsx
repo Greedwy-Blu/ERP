@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming } from 'react-native-reanimated';
 
 interface AnimaCircularProps {
@@ -30,7 +30,7 @@ export default function AnimaCircular({ children, radius, duration, initialAngle
 
   return (
     <Animated.View className='absolute' style={animatedStyle}>
-      {children}
+   <Text>   {children}</Text>
     </Animated.View>
   );
 }
