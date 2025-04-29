@@ -26,8 +26,8 @@ export default function Carregamento() {
     );
 
     const timer = setTimeout(() => {
-      router.push('/(login)');
-    }, 5000); 
+      router.push('/(login)/login');
+    }, 2000); 
 
     return () => clearTimeout(timer); 
   }, []);

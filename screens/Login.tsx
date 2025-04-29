@@ -1,250 +1,293 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
   SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableOpacity // Add this import
+  Dimensions,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   Easing,
-  interpolate,
-  Extrapolate,
-  withDelay
+  runOnJS,
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { useAuthControllerLogin } from '@/api/generated';
 
-const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
-const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+const { width, height } = Dimensions.get('window');
 
-
-const LoginScreen = () => {
-  const [email, setEmail] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
+export default function LoginScreen() {
   const router = useRouter();
+  const scale = useSharedValue(0.5);
+  const opacity = useSharedValue(0);
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Valores animados
-  const titlePosition = useSharedValue(30);
-  const subtitleOpacity = useSharedValue(0);
-  const inputScale = useSharedValue(0.9);
-  const buttonOpacity = useSharedValue(0);
-
-  // Estilos animados
-  const titleAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateY: titlePosition.value }],
-    };
+  // Usar o hook de login gerado pelo Orval
+  const { mutate: login, isLoading: isLoginLoading } = useAuthControllerLogin({
+    mutation: {
+      onSuccess: async (response) => {
+        const { data } = response;
+        
+        // Salvar token e informações do usuário
+        await AsyncStorage.setItem('accessToken', data.accessToken);
+        await AsyncStorage.setItem('userRole', data.role);
+        
+        // Salvar ID do usuário baseado no papel
+        if (data.role === 'funcionario' && data.funcionario) {
+          await AsyncStorage.setItem('userId', data.funcionario.id.toString());
+        } else if (data.role === 'gestor' && data.gestao) {
+          await AsyncStorage.setItem('userId', data.gestao.id.toString());
+        }
+        
+        // Redirecionar baseado no papel do usuário
+        if (data.role === 'funcionario') {
+          router.push('/(app_main)/funcionario/FuncionarioDashboard');
+        } else if (data.role === 'gestor') {
+          router.push('/(app_main)/gestor/GestorDashboard');
+        } else {
+          router.push('/(home)/guide/livroSelecao');
+        }
+        
+        setIsLoading(false);
+      },
+      onError: (error) => {
+        console.error('Erro ao fazer login:', error);
+        Alert.alert(
+          'Erro de Autenticação',
+          'Código ou senha incorretos. Por favor, tente novamente.'
+        );
+        setIsLoading(false);
+      }
+    }
   });
 
-  const subtitleAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: subtitleOpacity.value,
-    };
-  });
+  const handleLogin = () => {
+    if (!code || !password) {
+      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos.');
+      return;
+    }
 
-  const inputAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: inputScale.value }],
-      borderBottomColor: isFocused 
-        ? withTiming('#007AFF', { duration: 300 })
-        : withTiming('#DDD', { duration: 300 }),
-    };
-  });
-
-  const buttonAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: buttonOpacity.value,
-      transform: [
-        {
-          translateY: interpolate(
-            buttonOpacity.value,
-            [0, 1],
-            [20, 0],
-            Extrapolate.CLAMP
-          ),
-        },
-      ],
-    };
-  });
-
-  // Animação ao montar o componente
-  React.useEffect(() => {
-    titlePosition.value = withTiming(0, {
-      duration: 800,
-      easing: Easing.out(Easing.exp),
+    setIsLoading(true);
+    
+    // Chamar a mutação de login com os dados do formulário
+    login({
+      data: {
+        code,
+        password
+      }
     });
-  
-    subtitleOpacity.value = withDelay(
-      200,
-      withTiming(1, {
-        duration: 600,
-        easing: Easing.out(Easing.exp),
-      })
-    );
-  
-    inputScale.value = withDelay(
-      300,
-      withTiming(1, {
-        duration: 500,
-        easing: Easing.out(Easing.exp),
-      })
-    );
-  
-    buttonOpacity.value = withDelay(
-      500,
-      withTiming(1, {
-        duration: 500,
-        easing: Easing.out(Easing.exp),
-      })
-    );
+  };
+
+  useEffect(() => {
+    scale.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
+    opacity.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
+    
+    // Verificar se já existe um token válido
+    const checkToken = async () => {
+      try {
+        const token = await AsyncStorage.getItem('accessToken');
+        const userRole = await AsyncStorage.getItem('userRole');
+        
+        if (token) {
+          // Configurar o token no axios para futuras requisições
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          
+          // Redirecionar baseado no papel do usuário
+          if (data.role === 'funcionario') {
+            router.push('/(app_main)/funcionario/FuncionarioDashboard');
+          } else if (data.role === 'gestor') {
+            router.push('/(app_main)/gestor/GestorDashboard');
+         } else {
+            router.push('/(home)/guide/livroSelecao');
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao verificar token:', error);
+      }
+    };
+    
+    checkToken();
   }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardContainer}
-      >
-        <View style={styles.header}>
-          <Text style={styles.time}>9:41</Text>
-        </View>
+      <StatusBar style="dark" />
 
+      {/* Círculos decorativos ao fundo */}
+      <View style={StyleSheet.absoluteFill}>
+        <Animated.View style={[styles.circle, styles.circleTopLeft, animatedStyle]} />
+        <Animated.View style={[styles.circle, styles.circleRightMid, animatedStyle]} />
+        <Animated.View style={[styles.circle, styles.circleBottomLeft, animatedStyle]} />
+        <Animated.View style={[styles.circle, styles.circleBottomRight, animatedStyle]} />
+      </View>
+
+      {/* Conteúdo principal e rodapé */}
+      <View style={styles.main}>
         <View style={styles.content}>
-          <Animated.Text style={[styles.title, titleAnimatedStyle]}>
-            Login
-          </Animated.Text>
-          
-          <Animated.Text style={[styles.subtitle, subtitleAnimatedStyle]}>
-            Good to see you back!
-          </Animated.Text>
-          
-          <Animated.View style={[styles.inputContainer, inputAnimatedStyle]}>
-            <Text style={styles.inputLabel}>Email</Text>
-            <AnimatedTextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              placeholderTextColor="#999"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-            />
-          </Animated.View>
+          <Text style={styles.title}>Login</Text>
+          <Text style={styles.subtitle}>Sempre bom de ter de volta!</Text>
 
-          <View style={styles.buttonContainer}>
-            <AnimatedTouchableOpacity 
-              style={[
-                styles.button, 
-                !email && styles.buttonDisabled,
-                buttonAnimatedStyle
-              ]}
-              disabled={!email}
-              onPress={() => router.push('/')}
-            >
-              <Text style={styles.buttonText}>Next</Text>
-            </AnimatedTouchableOpacity>
+          <TextInput
+            placeholder="Código"
+            placeholderTextColor="#9ACBD0"
+            style={styles.input}
+            keyboardType="default"
+            value={code}
+            onChangeText={setCode}
+          />
 
-            <AnimatedTouchableOpacity 
-              style={[styles.cancelButton, buttonAnimatedStyle]}
-              onPress={() => router.back()}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </AnimatedTouchableOpacity>
-          </View>
+          <TextInput
+            placeholder="Senha"
+            placeholderTextColor="#9ACBD0"
+            style={styles.input}
+            secureTextEntry={true}
+            value={password}
+            onChangeText={setPassword}
+          />
+
+          <TouchableOpacity 
+            style={styles.button} 
+            onPress={handleLogin}
+            disabled={isLoading || isLoginLoading}
+          >
+            {isLoading || isLoginLoading ? (
+              <ActivityIndicator color="#F2EFE7" />
+            ) : (
+              <Text style={styles.buttonText}>Entrar</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.push('/')}>
+            <Text style={styles.cancelText}>Voltar</Text>
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F2EFE7',
   },
-  keyboardContainer: {
+  main: {
     flex: 1,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    alignItems: 'flex-end',
-  },
-  time: {
-    fontSize: 16,
-    color: '#000',
-    fontWeight: '600',
+    justifyContent: 'space-between',
   },
   content: {
-    flex: 1,
     paddingHorizontal: 32,
-    justifyContent: 'center',
-    marginTop: -100,
+    paddingTop: 48,
+    zIndex: 1,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#006A71',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
-    marginBottom: 40,
-  },
-  inputContainer: {
-    marginBottom: 30,
-    borderBottomWidth: 1,
-    paddingBottom: 8,
-  },
-  inputLabel: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 8,
+    color: '#FFFFFF',
+    marginBottom: 32,
   },
   input: {
-    fontSize: 18,
-    color: '#000',
-    height: 40,
-    paddingVertical: 0,
-  },
-  buttonContainer: {
-    marginTop: 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    marginBottom: 24,
+    color: '#006A71',
   },
   button: {
-    backgroundColor: '#007AFF',
-    borderRadius: 10,
-    height: 50,
-    justifyContent: 'center',
+    backgroundColor: '#006A71',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
     marginBottom: 16,
   },
-  buttonDisabled: {
-    backgroundColor: '#A7C7FF',
-  },
   buttonText: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: '600',
+    color: '#F2EFE7',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
-  cancelButton: {
-    height: 50,
-    justifyContent: 'center',
+  cancelText: {
+    color: '#48A6A7',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  footer: {
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderColor: '#ddd',
     alignItems: 'center',
+    backgroundColor: '#F2EFE7',
+    zIndex: 1,
   },
-  cancelButtonText: {
-    color: '#007AFF',
-    fontSize: 18,
+  footerText: {
+    fontSize: 14,
+    color: '#006A71',
     fontWeight: '600',
+  },
+  footerSubtext: {
+    fontSize: 12,
+    color: '#48A6A7',
+  },
+
+  // Círculos animados
+  circle: {
+    position: 'absolute',
+  },
+  circleTopLeft: {
+    top: -height * 0.12,
+    left: -width * 0.3,
+    width: width * 0.7,
+    height: width * 0.7,
+    borderRadius: width * 0.35,
+    backgroundColor: '#48A6A7',
+    opacity: 0.8,
+  },
+  circleRightMid: {
+    top: height * 0.3,
+    right: -width * 0.2,
+    width: width * 0.4,
+    height: width * 0.4,
+    borderRadius: width * 0.2,
+    backgroundColor: '#006A71',
+    opacity: 0.9,
+  },
+  circleBottomLeft: {
+    bottom: -height * 0.08,
+    left: -width * 0.25,
+    width: width * 0.5,
+    height: width * 0.5,
+    borderRadius: width * 0.25,
+    backgroundColor: '#9ACBD0',
+    opacity: 0.7,
+  },
+  circleBottomRight: {
+    bottom: -height * 0.1,
+    right: -width * 0.15,
+    width: width * 0.35,
+    height: width * 0.35,
+    borderRadius: width * 0.175,
+    backgroundColor: '#006A71',
+    opacity: 0.6,
   },
 });
-
-export default LoginScreen;
