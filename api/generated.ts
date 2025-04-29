@@ -18,12 +18,6 @@ import type {
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query'
-import axios from 'axios'
-import type {
-  AxiosError,
-  AxiosRequestConfig,
-  AxiosResponse
-} from 'axios'
 import type {
   AddSectorConfigDto,
   CreateAuthDto,
@@ -47,35 +41,41 @@ import type {
   UpdateProductDto,
   UpdateSectorDto
 } from './model'
+import { customInstance } from './mutator/custom-instance';
+import type { ErrorType, BodyType } from './mutator/custom-instance';
 
+
+type SecondParameter<T extends (...args: any) => any> = Parameters<T>[1];
 
 
 export const appControllerGetHello = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<string>> => {
     
-    
-    return axios.get(
-      `/`,options
-    );
-  }
-
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<string>(
+      {url: `/`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getAppControllerGetHelloQueryKey = () => {
     return [`/`] as const;
     }
 
     
-export const getAppControllerGetHelloQueryOptions = <TData = Awaited<ReturnType<typeof appControllerGetHello>>, TError = AxiosError<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof appControllerGetHello>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getAppControllerGetHelloQueryOptions = <TData = Awaited<ReturnType<typeof appControllerGetHello>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof appControllerGetHello>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAppControllerGetHelloQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof appControllerGetHello>>> = ({ signal }) => appControllerGetHello({ signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof appControllerGetHello>>> = ({ signal }) => appControllerGetHello(requestOptions, signal);
 
       
 
@@ -85,12 +85,12 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type AppControllerGetHelloQueryResult = NonNullable<Awaited<ReturnType<typeof appControllerGetHello>>>
-export type AppControllerGetHelloQueryError = AxiosError<unknown>
+export type AppControllerGetHelloQueryError = ErrorType<unknown>
 
 
 
-export function useAppControllerGetHello<TData = Awaited<ReturnType<typeof appControllerGetHello>>, TError = AxiosError<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof appControllerGetHello>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useAppControllerGetHello<TData = Awaited<ReturnType<typeof appControllerGetHello>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof appControllerGetHello>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -110,36 +110,39 @@ export function useAppControllerGetHello<TData = Awaited<ReturnType<typeof appCo
  * @summary Criar um novo pedido
  */
 export const ordersControllerCreate = (
-    createOrderDto: CreateOrderDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/orders`,
-      createOrderDto,options
-    );
-  }
+    createOrderDto: BodyType<CreateOrderDto>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createOrderDto, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getOrdersControllerCreateMutationOptions = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreate>>, TError,{data: CreateOrderDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreate>>, TError,{data: CreateOrderDto}, TContext> => {
+export const getOrdersControllerCreateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreate>>, TError,{data: BodyType<CreateOrderDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreate>>, TError,{data: BodyType<CreateOrderDto>}, TContext> => {
     
 const mutationKey = ['ordersControllerCreate'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerCreate>>, {data: CreateOrderDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerCreate>>, {data: BodyType<CreateOrderDto>}> = (props) => {
           const {data} = props ?? {};
 
-          return  ordersControllerCreate(data,axiosOptions)
+          return  ordersControllerCreate(data,requestOptions)
         }
 
         
@@ -148,18 +151,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type OrdersControllerCreateMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerCreate>>>
-    export type OrdersControllerCreateMutationBody = CreateOrderDto
-    export type OrdersControllerCreateMutationError = AxiosError<unknown>
+    export type OrdersControllerCreateMutationBody = BodyType<CreateOrderDto>
+    export type OrdersControllerCreateMutationError = ErrorType<unknown>
 
     /**
  * @summary Criar um novo pedido
  */
-export const useOrdersControllerCreate = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreate>>, TError,{data: CreateOrderDto}, TContext>, axios?: AxiosRequestConfig}
+export const useOrdersControllerCreate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreate>>, TError,{data: BodyType<CreateOrderDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof ordersControllerCreate>>,
         TError,
-        {data: CreateOrderDto},
+        {data: BodyType<CreateOrderDto>},
         TContext
       > => {
 
@@ -172,31 +175,33 @@ export const useOrdersControllerCreate = <TError = AxiosError<unknown>,
  * @summary Listar todos os pedidos
  */
 export const ordersControllerFindAll = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
     
-    
-    return axios.get(
-      `/orders`,options
-    );
-  }
-
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getOrdersControllerFindAllQueryKey = () => {
     return [`/orders`] as const;
     }
 
     
-export const getOrdersControllerFindAllQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerFindAll>>, TError = AxiosError<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindAll>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getOrdersControllerFindAllQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerFindAll>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindAll>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getOrdersControllerFindAllQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerFindAll>>> = ({ signal }) => ordersControllerFindAll({ signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerFindAll>>> = ({ signal }) => ordersControllerFindAll(requestOptions, signal);
 
       
 
@@ -206,15 +211,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type OrdersControllerFindAllQueryResult = NonNullable<Awaited<ReturnType<typeof ordersControllerFindAll>>>
-export type OrdersControllerFindAllQueryError = AxiosError<unknown>
+export type OrdersControllerFindAllQueryError = ErrorType<unknown>
 
 
 /**
  * @summary Listar todos os pedidos
  */
 
-export function useOrdersControllerFindAll<TData = Awaited<ReturnType<typeof ordersControllerFindAll>>, TError = AxiosError<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindAll>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useOrdersControllerFindAll<TData = Awaited<ReturnType<typeof ordersControllerFindAll>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindAll>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -234,36 +239,39 @@ export function useOrdersControllerFindAll<TData = Awaited<ReturnType<typeof ord
  * @summary Iniciar o rastreamento de uma ordem
  */
 export const ordersControllerStartTracking = (
-    trackOrderDto: TrackOrderDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/orders/start-tracking`,
-      trackOrderDto,options
-    );
-  }
+    trackOrderDto: BodyType<TrackOrderDto>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders/start-tracking`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: trackOrderDto, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getOrdersControllerStartTrackingMutationOptions = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerStartTracking>>, TError,{data: TrackOrderDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerStartTracking>>, TError,{data: TrackOrderDto}, TContext> => {
+export const getOrdersControllerStartTrackingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerStartTracking>>, TError,{data: BodyType<TrackOrderDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerStartTracking>>, TError,{data: BodyType<TrackOrderDto>}, TContext> => {
     
 const mutationKey = ['ordersControllerStartTracking'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerStartTracking>>, {data: TrackOrderDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerStartTracking>>, {data: BodyType<TrackOrderDto>}> = (props) => {
           const {data} = props ?? {};
 
-          return  ordersControllerStartTracking(data,axiosOptions)
+          return  ordersControllerStartTracking(data,requestOptions)
         }
 
         
@@ -272,18 +280,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type OrdersControllerStartTrackingMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerStartTracking>>>
-    export type OrdersControllerStartTrackingMutationBody = TrackOrderDto
-    export type OrdersControllerStartTrackingMutationError = AxiosError<unknown>
+    export type OrdersControllerStartTrackingMutationBody = BodyType<TrackOrderDto>
+    export type OrdersControllerStartTrackingMutationError = ErrorType<unknown>
 
     /**
  * @summary Iniciar o rastreamento de uma ordem
  */
-export const useOrdersControllerStartTracking = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerStartTracking>>, TError,{data: TrackOrderDto}, TContext>, axios?: AxiosRequestConfig}
+export const useOrdersControllerStartTracking = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerStartTracking>>, TError,{data: BodyType<TrackOrderDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof ordersControllerStartTracking>>,
         TError,
-        {data: TrackOrderDto},
+        {data: BodyType<TrackOrderDto>},
         TContext
       > => {
 
@@ -297,36 +305,39 @@ export const useOrdersControllerStartTracking = <TError = AxiosError<unknown>,
  */
 export const ordersControllerEndTracking = (
     id: number,
-    trackOrderDto: TrackOrderDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void | OrderTracking>> => {
-    
-    
-    return axios.post(
-      `/orders/end-tracking/${id}`,
-      trackOrderDto,options
-    );
-  }
+    trackOrderDto: BodyType<TrackOrderDto>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void | OrderTracking>(
+      {url: `/orders/end-tracking/${id}`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: trackOrderDto, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getOrdersControllerEndTrackingMutationOptions = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerEndTracking>>, TError,{id: number;data: TrackOrderDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerEndTracking>>, TError,{id: number;data: TrackOrderDto}, TContext> => {
+export const getOrdersControllerEndTrackingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerEndTracking>>, TError,{id: number;data: BodyType<TrackOrderDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerEndTracking>>, TError,{id: number;data: BodyType<TrackOrderDto>}, TContext> => {
     
 const mutationKey = ['ordersControllerEndTracking'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerEndTracking>>, {id: number;data: TrackOrderDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerEndTracking>>, {id: number;data: BodyType<TrackOrderDto>}> = (props) => {
           const {id,data} = props ?? {};
 
-          return  ordersControllerEndTracking(id,data,axiosOptions)
+          return  ordersControllerEndTracking(id,data,requestOptions)
         }
 
         
@@ -335,18 +346,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type OrdersControllerEndTrackingMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerEndTracking>>>
-    export type OrdersControllerEndTrackingMutationBody = TrackOrderDto
-    export type OrdersControllerEndTrackingMutationError = AxiosError<unknown>
+    export type OrdersControllerEndTrackingMutationBody = BodyType<TrackOrderDto>
+    export type OrdersControllerEndTrackingMutationError = ErrorType<unknown>
 
     /**
  * @summary Finalizar o rastreamento de uma ordem
  */
-export const useOrdersControllerEndTracking = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerEndTracking>>, TError,{id: number;data: TrackOrderDto}, TContext>, axios?: AxiosRequestConfig}
+export const useOrdersControllerEndTracking = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerEndTracking>>, TError,{id: number;data: BodyType<TrackOrderDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof ordersControllerEndTracking>>,
         TError,
-        {id: number;data: TrackOrderDto},
+        {id: number;data: BodyType<TrackOrderDto>},
         TContext
       > => {
 
@@ -359,31 +370,33 @@ export const useOrdersControllerEndTracking = <TError = AxiosError<unknown>,
  * @summary Obter relatório de uma ordem
  */
 export const ordersControllerGetOrderReport = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.get(
-      `/orders/report/${id}`,options
-    );
-  }
-
+    id: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders/report/${id}`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getOrdersControllerGetOrderReportQueryKey = (id: number,) => {
     return [`/orders/report/${id}`] as const;
     }
 
     
-export const getOrdersControllerGetOrderReportQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerGetOrderReport>>, TError = AxiosError<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerGetOrderReport>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getOrdersControllerGetOrderReportQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerGetOrderReport>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerGetOrderReport>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getOrdersControllerGetOrderReportQueryKey(id);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerGetOrderReport>>> = ({ signal }) => ordersControllerGetOrderReport(id, { signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerGetOrderReport>>> = ({ signal }) => ordersControllerGetOrderReport(id, requestOptions, signal);
 
       
 
@@ -393,15 +406,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type OrdersControllerGetOrderReportQueryResult = NonNullable<Awaited<ReturnType<typeof ordersControllerGetOrderReport>>>
-export type OrdersControllerGetOrderReportQueryError = AxiosError<unknown>
+export type OrdersControllerGetOrderReportQueryError = ErrorType<unknown>
 
 
 /**
  * @summary Obter relatório de uma ordem
  */
 
-export function useOrdersControllerGetOrderReport<TData = Awaited<ReturnType<typeof ordersControllerGetOrderReport>>, TError = AxiosError<unknown>>(
- id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerGetOrderReport>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useOrdersControllerGetOrderReport<TData = Awaited<ReturnType<typeof ordersControllerGetOrderReport>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerGetOrderReport>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -422,36 +435,39 @@ export function useOrdersControllerGetOrderReport<TData = Awaited<ReturnType<typ
  */
 export const ordersControllerCreateEtapa = (
     id: number,
-    ordersControllerCreateEtapaBody: OrdersControllerCreateEtapaBody, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/orders/${id}/etapas`,
-      ordersControllerCreateEtapaBody,options
-    );
-  }
+    ordersControllerCreateEtapaBody: BodyType<OrdersControllerCreateEtapaBody>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders/${id}/etapas`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: ordersControllerCreateEtapaBody, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getOrdersControllerCreateEtapaMutationOptions = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateEtapa>>, TError,{id: number;data: OrdersControllerCreateEtapaBody}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateEtapa>>, TError,{id: number;data: OrdersControllerCreateEtapaBody}, TContext> => {
+export const getOrdersControllerCreateEtapaMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateEtapa>>, TError,{id: number;data: BodyType<OrdersControllerCreateEtapaBody>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateEtapa>>, TError,{id: number;data: BodyType<OrdersControllerCreateEtapaBody>}, TContext> => {
     
 const mutationKey = ['ordersControllerCreateEtapa'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerCreateEtapa>>, {id: number;data: OrdersControllerCreateEtapaBody}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerCreateEtapa>>, {id: number;data: BodyType<OrdersControllerCreateEtapaBody>}> = (props) => {
           const {id,data} = props ?? {};
 
-          return  ordersControllerCreateEtapa(id,data,axiosOptions)
+          return  ordersControllerCreateEtapa(id,data,requestOptions)
         }
 
         
@@ -460,18 +476,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type OrdersControllerCreateEtapaMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerCreateEtapa>>>
-    export type OrdersControllerCreateEtapaMutationBody = OrdersControllerCreateEtapaBody
-    export type OrdersControllerCreateEtapaMutationError = AxiosError<unknown>
+    export type OrdersControllerCreateEtapaMutationBody = BodyType<OrdersControllerCreateEtapaBody>
+    export type OrdersControllerCreateEtapaMutationError = ErrorType<unknown>
 
     /**
  * @summary Criar uma nova etapa para uma ordem
  */
-export const useOrdersControllerCreateEtapa = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateEtapa>>, TError,{id: number;data: OrdersControllerCreateEtapaBody}, TContext>, axios?: AxiosRequestConfig}
+export const useOrdersControllerCreateEtapa = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateEtapa>>, TError,{id: number;data: BodyType<OrdersControllerCreateEtapaBody>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof ordersControllerCreateEtapa>>,
         TError,
-        {id: number;data: OrdersControllerCreateEtapaBody},
+        {id: number;data: BodyType<OrdersControllerCreateEtapaBody>},
         TContext
       > => {
 
@@ -484,31 +500,33 @@ export const useOrdersControllerCreateEtapa = <TError = AxiosError<unknown>,
  * @summary Listar etapas de uma ordem
  */
 export const ordersControllerListEtapasByOrder = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.get(
-      `/orders/${id}/etapas`,options
-    );
-  }
-
+    id: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders/${id}/etapas`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getOrdersControllerListEtapasByOrderQueryKey = (id: number,) => {
     return [`/orders/${id}/etapas`] as const;
     }
 
     
-export const getOrdersControllerListEtapasByOrderQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerListEtapasByOrder>>, TError = AxiosError<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListEtapasByOrder>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getOrdersControllerListEtapasByOrderQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerListEtapasByOrder>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListEtapasByOrder>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getOrdersControllerListEtapasByOrderQueryKey(id);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerListEtapasByOrder>>> = ({ signal }) => ordersControllerListEtapasByOrder(id, { signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerListEtapasByOrder>>> = ({ signal }) => ordersControllerListEtapasByOrder(id, requestOptions, signal);
 
       
 
@@ -518,15 +536,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type OrdersControllerListEtapasByOrderQueryResult = NonNullable<Awaited<ReturnType<typeof ordersControllerListEtapasByOrder>>>
-export type OrdersControllerListEtapasByOrderQueryError = AxiosError<unknown>
+export type OrdersControllerListEtapasByOrderQueryError = ErrorType<unknown>
 
 
 /**
  * @summary Listar etapas de uma ordem
  */
 
-export function useOrdersControllerListEtapasByOrder<TData = Awaited<ReturnType<typeof ordersControllerListEtapasByOrder>>, TError = AxiosError<unknown>>(
- id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListEtapasByOrder>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useOrdersControllerListEtapasByOrder<TData = Awaited<ReturnType<typeof ordersControllerListEtapasByOrder>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListEtapasByOrder>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -546,27 +564,29 @@ export function useOrdersControllerListEtapasByOrder<TData = Awaited<ReturnType<
  * @summary Iniciar uma etapa
  */
 export const ordersControllerStartEtapa = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void | Etapa>> => {
-    
-    
-    return axios.post(
-      `/orders/etapas/${id}/iniciar`,undefined,options
-    );
-  }
+    id: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void | Etapa>(
+      {url: `/orders/etapas/${id}/iniciar`, method: 'POST', signal
+    },
+      options);
+    }
+  
 
 
-
-export const getOrdersControllerStartEtapaMutationOptions = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerStartEtapa>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+export const getOrdersControllerStartEtapaMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerStartEtapa>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerStartEtapa>>, TError,{id: number}, TContext> => {
     
 const mutationKey = ['ordersControllerStartEtapa'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -574,7 +594,7 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerStartEtapa>>, {id: number}> = (props) => {
           const {id} = props ?? {};
 
-          return  ordersControllerStartEtapa(id,axiosOptions)
+          return  ordersControllerStartEtapa(id,requestOptions)
         }
 
         
@@ -584,13 +604,13 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
 
     export type OrdersControllerStartEtapaMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerStartEtapa>>>
     
-    export type OrdersControllerStartEtapaMutationError = AxiosError<unknown>
+    export type OrdersControllerStartEtapaMutationError = ErrorType<unknown>
 
     /**
  * @summary Iniciar uma etapa
  */
-export const useOrdersControllerStartEtapa = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerStartEtapa>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+export const useOrdersControllerStartEtapa = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerStartEtapa>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof ordersControllerStartEtapa>>,
         TError,
@@ -607,27 +627,29 @@ export const useOrdersControllerStartEtapa = <TError = AxiosError<unknown>,
  * @summary Finalizar uma etapa
  */
 export const ordersControllerEndEtapa = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void | Etapa>> => {
-    
-    
-    return axios.post(
-      `/orders/etapas/${id}/finalizar`,undefined,options
-    );
-  }
+    id: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void | Etapa>(
+      {url: `/orders/etapas/${id}/finalizar`, method: 'POST', signal
+    },
+      options);
+    }
+  
 
 
-
-export const getOrdersControllerEndEtapaMutationOptions = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerEndEtapa>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+export const getOrdersControllerEndEtapaMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerEndEtapa>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerEndEtapa>>, TError,{id: number}, TContext> => {
     
 const mutationKey = ['ordersControllerEndEtapa'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -635,7 +657,7 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerEndEtapa>>, {id: number}> = (props) => {
           const {id} = props ?? {};
 
-          return  ordersControllerEndEtapa(id,axiosOptions)
+          return  ordersControllerEndEtapa(id,requestOptions)
         }
 
         
@@ -645,13 +667,13 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
 
     export type OrdersControllerEndEtapaMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerEndEtapa>>>
     
-    export type OrdersControllerEndEtapaMutationError = AxiosError<unknown>
+    export type OrdersControllerEndEtapaMutationError = ErrorType<unknown>
 
     /**
  * @summary Finalizar uma etapa
  */
-export const useOrdersControllerEndEtapa = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerEndEtapa>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+export const useOrdersControllerEndEtapa = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerEndEtapa>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof ordersControllerEndEtapa>>,
         TError,
@@ -669,36 +691,39 @@ export const useOrdersControllerEndEtapa = <TError = AxiosError<unknown>,
  */
 export const ordersControllerAtualizarStatus = (
     id: number,
-    ordersControllerAtualizarStatusBody: OrdersControllerAtualizarStatusBody, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void | Order>> => {
-    
-    
-    return axios.post(
-      `/orders/${id}/atualizar-status`,
-      ordersControllerAtualizarStatusBody,options
-    );
-  }
+    ordersControllerAtualizarStatusBody: BodyType<OrdersControllerAtualizarStatusBody>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void | Order>(
+      {url: `/orders/${id}/atualizar-status`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: ordersControllerAtualizarStatusBody, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getOrdersControllerAtualizarStatusMutationOptions = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerAtualizarStatus>>, TError,{id: number;data: OrdersControllerAtualizarStatusBody}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerAtualizarStatus>>, TError,{id: number;data: OrdersControllerAtualizarStatusBody}, TContext> => {
+export const getOrdersControllerAtualizarStatusMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerAtualizarStatus>>, TError,{id: number;data: BodyType<OrdersControllerAtualizarStatusBody>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerAtualizarStatus>>, TError,{id: number;data: BodyType<OrdersControllerAtualizarStatusBody>}, TContext> => {
     
 const mutationKey = ['ordersControllerAtualizarStatus'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerAtualizarStatus>>, {id: number;data: OrdersControllerAtualizarStatusBody}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerAtualizarStatus>>, {id: number;data: BodyType<OrdersControllerAtualizarStatusBody>}> = (props) => {
           const {id,data} = props ?? {};
 
-          return  ordersControllerAtualizarStatus(id,data,axiosOptions)
+          return  ordersControllerAtualizarStatus(id,data,requestOptions)
         }
 
         
@@ -707,18 +732,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type OrdersControllerAtualizarStatusMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerAtualizarStatus>>>
-    export type OrdersControllerAtualizarStatusMutationBody = OrdersControllerAtualizarStatusBody
-    export type OrdersControllerAtualizarStatusMutationError = AxiosError<unknown>
+    export type OrdersControllerAtualizarStatusMutationBody = BodyType<OrdersControllerAtualizarStatusBody>
+    export type OrdersControllerAtualizarStatusMutationError = ErrorType<unknown>
 
     /**
  * @summary Atualizar o status de uma ordem
  */
-export const useOrdersControllerAtualizarStatus = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerAtualizarStatus>>, TError,{id: number;data: OrdersControllerAtualizarStatusBody}, TContext>, axios?: AxiosRequestConfig}
+export const useOrdersControllerAtualizarStatus = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerAtualizarStatus>>, TError,{id: number;data: BodyType<OrdersControllerAtualizarStatusBody>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof ordersControllerAtualizarStatus>>,
         TError,
-        {id: number;data: OrdersControllerAtualizarStatusBody},
+        {id: number;data: BodyType<OrdersControllerAtualizarStatusBody>},
         TContext
       > => {
 
@@ -731,31 +756,33 @@ export const useOrdersControllerAtualizarStatus = <TError = AxiosError<unknown>,
  * @summary Obter detalhes de um pedido por ID
  */
 export const ordersControllerFindOne = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.get(
-      `/orders/${id}`,options
-    );
-  }
-
+    id: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders/${id}`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getOrdersControllerFindOneQueryKey = (id: number,) => {
     return [`/orders/${id}`] as const;
     }
 
     
-export const getOrdersControllerFindOneQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerFindOne>>, TError = AxiosError<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindOne>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getOrdersControllerFindOneQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerFindOne>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindOne>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getOrdersControllerFindOneQueryKey(id);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerFindOne>>> = ({ signal }) => ordersControllerFindOne(id, { signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerFindOne>>> = ({ signal }) => ordersControllerFindOne(id, requestOptions, signal);
 
       
 
@@ -765,15 +792,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type OrdersControllerFindOneQueryResult = NonNullable<Awaited<ReturnType<typeof ordersControllerFindOne>>>
-export type OrdersControllerFindOneQueryError = AxiosError<void>
+export type OrdersControllerFindOneQueryError = ErrorType<void>
 
 
 /**
  * @summary Obter detalhes de um pedido por ID
  */
 
-export function useOrdersControllerFindOne<TData = Awaited<ReturnType<typeof ordersControllerFindOne>>, TError = AxiosError<void>>(
- id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindOne>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useOrdersControllerFindOne<TData = Awaited<ReturnType<typeof ordersControllerFindOne>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerFindOne>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -793,31 +820,33 @@ export function useOrdersControllerFindOne<TData = Awaited<ReturnType<typeof ord
  * @summary Listar todos os motivos de interrupção
  */
 export const ordersControllerListMotivosInterrupcao = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
     
-    
-    return axios.get(
-      `/orders/motivos-interrupcao`,options
-    );
-  }
-
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders/motivos-interrupcao`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getOrdersControllerListMotivosInterrupcaoQueryKey = () => {
     return [`/orders/motivos-interrupcao`] as const;
     }
 
     
-export const getOrdersControllerListMotivosInterrupcaoQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError = AxiosError<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getOrdersControllerListMotivosInterrupcaoQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getOrdersControllerListMotivosInterrupcaoQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>> = ({ signal }) => ordersControllerListMotivosInterrupcao({ signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>> = ({ signal }) => ordersControllerListMotivosInterrupcao(requestOptions, signal);
 
       
 
@@ -827,15 +856,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type OrdersControllerListMotivosInterrupcaoQueryResult = NonNullable<Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>>
-export type OrdersControllerListMotivosInterrupcaoQueryError = AxiosError<unknown>
+export type OrdersControllerListMotivosInterrupcaoQueryError = ErrorType<unknown>
 
 
 /**
  * @summary Listar todos os motivos de interrupção
  */
 
-export function useOrdersControllerListMotivosInterrupcao<TData = Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError = AxiosError<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useOrdersControllerListMotivosInterrupcao<TData = Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListMotivosInterrupcao>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -855,36 +884,39 @@ export function useOrdersControllerListMotivosInterrupcao<TData = Awaited<Return
  * @summary Adicionar um novo motivo de interrupção
  */
 export const ordersControllerCreateMotivoInterrupcao = (
-    createMotivoInterrupcaoDto: CreateMotivoInterrupcaoDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/orders/motivos-interrupcao`,
-      createMotivoInterrupcaoDto,options
-    );
-  }
+    createMotivoInterrupcaoDto: BodyType<CreateMotivoInterrupcaoDto>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders/motivos-interrupcao`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createMotivoInterrupcaoDto, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getOrdersControllerCreateMotivoInterrupcaoMutationOptions = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>, TError,{data: CreateMotivoInterrupcaoDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>, TError,{data: CreateMotivoInterrupcaoDto}, TContext> => {
+export const getOrdersControllerCreateMotivoInterrupcaoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>, TError,{data: BodyType<CreateMotivoInterrupcaoDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>, TError,{data: BodyType<CreateMotivoInterrupcaoDto>}, TContext> => {
     
 const mutationKey = ['ordersControllerCreateMotivoInterrupcao'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>, {data: CreateMotivoInterrupcaoDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>, {data: BodyType<CreateMotivoInterrupcaoDto>}> = (props) => {
           const {data} = props ?? {};
 
-          return  ordersControllerCreateMotivoInterrupcao(data,axiosOptions)
+          return  ordersControllerCreateMotivoInterrupcao(data,requestOptions)
         }
 
         
@@ -893,18 +925,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type OrdersControllerCreateMotivoInterrupcaoMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>>
-    export type OrdersControllerCreateMotivoInterrupcaoMutationBody = CreateMotivoInterrupcaoDto
-    export type OrdersControllerCreateMotivoInterrupcaoMutationError = AxiosError<unknown>
+    export type OrdersControllerCreateMotivoInterrupcaoMutationBody = BodyType<CreateMotivoInterrupcaoDto>
+    export type OrdersControllerCreateMotivoInterrupcaoMutationError = ErrorType<unknown>
 
     /**
  * @summary Adicionar um novo motivo de interrupção
  */
-export const useOrdersControllerCreateMotivoInterrupcao = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>, TError,{data: CreateMotivoInterrupcaoDto}, TContext>, axios?: AxiosRequestConfig}
+export const useOrdersControllerCreateMotivoInterrupcao = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>, TError,{data: BodyType<CreateMotivoInterrupcaoDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof ordersControllerCreateMotivoInterrupcao>>,
         TError,
-        {data: CreateMotivoInterrupcaoDto},
+        {data: BodyType<CreateMotivoInterrupcaoDto>},
         TContext
       > => {
 
@@ -917,36 +949,39 @@ export const useOrdersControllerCreateMotivoInterrupcao = <TError = AxiosError<u
  * @summary Criar um novo registro no histórico de produção
  */
 export const ordersControllerCreateHistoricoProducao = (
-    createHistoricoProducaoDto: CreateHistoricoProducaoDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/orders/historico-producao`,
-      createHistoricoProducaoDto,options
-    );
-  }
+    createHistoricoProducaoDto: BodyType<CreateHistoricoProducaoDto>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders/historico-producao`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createHistoricoProducaoDto, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getOrdersControllerCreateHistoricoProducaoMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>, TError,{data: CreateHistoricoProducaoDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>, TError,{data: CreateHistoricoProducaoDto}, TContext> => {
+export const getOrdersControllerCreateHistoricoProducaoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>, TError,{data: BodyType<CreateHistoricoProducaoDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>, TError,{data: BodyType<CreateHistoricoProducaoDto>}, TContext> => {
     
 const mutationKey = ['ordersControllerCreateHistoricoProducao'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>, {data: CreateHistoricoProducaoDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>, {data: BodyType<CreateHistoricoProducaoDto>}> = (props) => {
           const {data} = props ?? {};
 
-          return  ordersControllerCreateHistoricoProducao(data,axiosOptions)
+          return  ordersControllerCreateHistoricoProducao(data,requestOptions)
         }
 
         
@@ -955,18 +990,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type OrdersControllerCreateHistoricoProducaoMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>>
-    export type OrdersControllerCreateHistoricoProducaoMutationBody = CreateHistoricoProducaoDto
-    export type OrdersControllerCreateHistoricoProducaoMutationError = AxiosError<void>
+    export type OrdersControllerCreateHistoricoProducaoMutationBody = BodyType<CreateHistoricoProducaoDto>
+    export type OrdersControllerCreateHistoricoProducaoMutationError = ErrorType<void>
 
     /**
  * @summary Criar um novo registro no histórico de produção
  */
-export const useOrdersControllerCreateHistoricoProducao = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>, TError,{data: CreateHistoricoProducaoDto}, TContext>, axios?: AxiosRequestConfig}
+export const useOrdersControllerCreateHistoricoProducao = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>, TError,{data: BodyType<CreateHistoricoProducaoDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof ordersControllerCreateHistoricoProducao>>,
         TError,
-        {data: CreateHistoricoProducaoDto},
+        {data: BodyType<CreateHistoricoProducaoDto>},
         TContext
       > => {
 
@@ -980,36 +1015,38 @@ export const useOrdersControllerCreateHistoricoProducao = <TError = AxiosError<v
  */
 export const ordersControllerUpdateHistoricoProducao = (
     id: number,
-    updateHistoricoProducaoDto: UpdateHistoricoProducaoDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.put(
-      `/orders/historico-producao/${id}`,
-      updateHistoricoProducaoDto,options
-    );
-  }
+    updateHistoricoProducaoDto: BodyType<UpdateHistoricoProducaoDto>,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders/historico-producao/${id}`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: updateHistoricoProducaoDto
+    },
+      options);
+    }
+  
 
 
-
-export const getOrdersControllerUpdateHistoricoProducaoMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>, TError,{id: number;data: UpdateHistoricoProducaoDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>, TError,{id: number;data: UpdateHistoricoProducaoDto}, TContext> => {
+export const getOrdersControllerUpdateHistoricoProducaoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>, TError,{id: number;data: BodyType<UpdateHistoricoProducaoDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>, TError,{id: number;data: BodyType<UpdateHistoricoProducaoDto>}, TContext> => {
     
 const mutationKey = ['ordersControllerUpdateHistoricoProducao'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>, {id: number;data: UpdateHistoricoProducaoDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>, {id: number;data: BodyType<UpdateHistoricoProducaoDto>}> = (props) => {
           const {id,data} = props ?? {};
 
-          return  ordersControllerUpdateHistoricoProducao(id,data,axiosOptions)
+          return  ordersControllerUpdateHistoricoProducao(id,data,requestOptions)
         }
 
         
@@ -1018,18 +1055,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type OrdersControllerUpdateHistoricoProducaoMutationResult = NonNullable<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>>
-    export type OrdersControllerUpdateHistoricoProducaoMutationBody = UpdateHistoricoProducaoDto
-    export type OrdersControllerUpdateHistoricoProducaoMutationError = AxiosError<void>
+    export type OrdersControllerUpdateHistoricoProducaoMutationBody = BodyType<UpdateHistoricoProducaoDto>
+    export type OrdersControllerUpdateHistoricoProducaoMutationError = ErrorType<void>
 
     /**
  * @summary Atualizar um registro no histórico de produção
  */
-export const useOrdersControllerUpdateHistoricoProducao = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>, TError,{id: number;data: UpdateHistoricoProducaoDto}, TContext>, axios?: AxiosRequestConfig}
+export const useOrdersControllerUpdateHistoricoProducao = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>, TError,{id: number;data: BodyType<UpdateHistoricoProducaoDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof ordersControllerUpdateHistoricoProducao>>,
         TError,
-        {id: number;data: UpdateHistoricoProducaoDto},
+        {id: number;data: BodyType<UpdateHistoricoProducaoDto>},
         TContext
       > => {
 
@@ -1042,31 +1079,33 @@ export const useOrdersControllerUpdateHistoricoProducao = <TError = AxiosError<v
  * @summary Listar histórico de produção de um pedido
  */
 export const ordersControllerListHistoricoProducao = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.get(
-      `/orders/${id}/historico-producao`,options
-    );
-  }
-
+    id: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders/${id}/historico-producao`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getOrdersControllerListHistoricoProducaoQueryKey = (id: number,) => {
     return [`/orders/${id}/historico-producao`] as const;
     }
 
     
-export const getOrdersControllerListHistoricoProducaoQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError = AxiosError<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getOrdersControllerListHistoricoProducaoQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getOrdersControllerListHistoricoProducaoQueryKey(id);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>> = ({ signal }) => ordersControllerListHistoricoProducao(id, { signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>> = ({ signal }) => ordersControllerListHistoricoProducao(id, requestOptions, signal);
 
       
 
@@ -1076,15 +1115,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type OrdersControllerListHistoricoProducaoQueryResult = NonNullable<Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>>
-export type OrdersControllerListHistoricoProducaoQueryError = AxiosError<void>
+export type OrdersControllerListHistoricoProducaoQueryError = ErrorType<void>
 
 
 /**
  * @summary Listar histórico de produção de um pedido
  */
 
-export function useOrdersControllerListHistoricoProducao<TData = Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError = AxiosError<void>>(
- id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useOrdersControllerListHistoricoProducao<TData = Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListHistoricoProducao>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -1104,31 +1143,33 @@ export function useOrdersControllerListHistoricoProducao<TData = Awaited<ReturnT
  * @summary Listar todos os rastreamentos de uma ordem
  */
 export const ordersControllerListRastreamentosByOrder = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.get(
-      `/orders/${id}/rastreamentos`,options
-    );
-  }
-
+    id: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/orders/${id}/rastreamentos`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getOrdersControllerListRastreamentosByOrderQueryKey = (id: number,) => {
     return [`/orders/${id}/rastreamentos`] as const;
     }
 
     
-export const getOrdersControllerListRastreamentosByOrderQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError = AxiosError<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getOrdersControllerListRastreamentosByOrderQueryOptions = <TData = Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getOrdersControllerListRastreamentosByOrderQueryKey(id);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>> = ({ signal }) => ordersControllerListRastreamentosByOrder(id, { signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>> = ({ signal }) => ordersControllerListRastreamentosByOrder(id, requestOptions, signal);
 
       
 
@@ -1138,15 +1179,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type OrdersControllerListRastreamentosByOrderQueryResult = NonNullable<Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>>
-export type OrdersControllerListRastreamentosByOrderQueryError = AxiosError<void>
+export type OrdersControllerListRastreamentosByOrderQueryError = ErrorType<void>
 
 
 /**
  * @summary Listar todos os rastreamentos de uma ordem
  */
 
-export function useOrdersControllerListRastreamentosByOrder<TData = Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError = AxiosError<void>>(
- id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useOrdersControllerListRastreamentosByOrder<TData = Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof ordersControllerListRastreamentosByOrder>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -1166,36 +1207,39 @@ export function useOrdersControllerListRastreamentosByOrder<TData = Awaited<Retu
  * @summary Criar um novo usuário
  */
 export const authControllerRegister = (
-    createAuthDto: CreateAuthDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/auth/register`,
-      createAuthDto,options
-    );
-  }
+    createAuthDto: BodyType<CreateAuthDto>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/auth/register`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createAuthDto, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getAuthControllerRegisterMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerRegister>>, TError,{data: CreateAuthDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof authControllerRegister>>, TError,{data: CreateAuthDto}, TContext> => {
+export const getAuthControllerRegisterMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerRegister>>, TError,{data: BodyType<CreateAuthDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof authControllerRegister>>, TError,{data: BodyType<CreateAuthDto>}, TContext> => {
     
 const mutationKey = ['authControllerRegister'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authControllerRegister>>, {data: CreateAuthDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authControllerRegister>>, {data: BodyType<CreateAuthDto>}> = (props) => {
           const {data} = props ?? {};
 
-          return  authControllerRegister(data,axiosOptions)
+          return  authControllerRegister(data,requestOptions)
         }
 
         
@@ -1204,18 +1248,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type AuthControllerRegisterMutationResult = NonNullable<Awaited<ReturnType<typeof authControllerRegister>>>
-    export type AuthControllerRegisterMutationBody = CreateAuthDto
-    export type AuthControllerRegisterMutationError = AxiosError<void>
+    export type AuthControllerRegisterMutationBody = BodyType<CreateAuthDto>
+    export type AuthControllerRegisterMutationError = ErrorType<void>
 
     /**
  * @summary Criar um novo usuário
  */
-export const useAuthControllerRegister = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerRegister>>, TError,{data: CreateAuthDto}, TContext>, axios?: AxiosRequestConfig}
+export const useAuthControllerRegister = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerRegister>>, TError,{data: BodyType<CreateAuthDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof authControllerRegister>>,
         TError,
-        {data: CreateAuthDto},
+        {data: BodyType<CreateAuthDto>},
         TContext
       > => {
 
@@ -1228,36 +1272,39 @@ export const useAuthControllerRegister = <TError = AxiosError<void>,
  * @summary Fazer login
  */
 export const authControllerLogin = (
-    loginDto: LoginDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/auth/login`,
-      loginDto,options
-    );
-  }
+    loginDto: BodyType<LoginDto>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/auth/login`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: loginDto, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getAuthControllerLoginMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerLogin>>, TError,{data: LoginDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof authControllerLogin>>, TError,{data: LoginDto}, TContext> => {
+export const getAuthControllerLoginMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerLogin>>, TError,{data: BodyType<LoginDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof authControllerLogin>>, TError,{data: BodyType<LoginDto>}, TContext> => {
     
 const mutationKey = ['authControllerLogin'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authControllerLogin>>, {data: LoginDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof authControllerLogin>>, {data: BodyType<LoginDto>}> = (props) => {
           const {data} = props ?? {};
 
-          return  authControllerLogin(data,axiosOptions)
+          return  authControllerLogin(data,requestOptions)
         }
 
         
@@ -1266,18 +1313,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type AuthControllerLoginMutationResult = NonNullable<Awaited<ReturnType<typeof authControllerLogin>>>
-    export type AuthControllerLoginMutationBody = LoginDto
-    export type AuthControllerLoginMutationError = AxiosError<void>
+    export type AuthControllerLoginMutationBody = BodyType<LoginDto>
+    export type AuthControllerLoginMutationError = ErrorType<void>
 
     /**
  * @summary Fazer login
  */
-export const useAuthControllerLogin = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerLogin>>, TError,{data: LoginDto}, TContext>, axios?: AxiosRequestConfig}
+export const useAuthControllerLogin = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerLogin>>, TError,{data: BodyType<LoginDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof authControllerLogin>>,
         TError,
-        {data: LoginDto},
+        {data: BodyType<LoginDto>},
         TContext
       > => {
 
@@ -1290,31 +1337,33 @@ export const useAuthControllerLogin = <TError = AxiosError<void>,
  * @summary Obter informações do usuário autenticado
  */
 export const authControllerGetProfile = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
     
-    
-    return axios.get(
-      `/auth/me`,options
-    );
-  }
-
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/auth/me`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getAuthControllerGetProfileQueryKey = () => {
     return [`/auth/me`] as const;
     }
 
     
-export const getAuthControllerGetProfileQueryOptions = <TData = Awaited<ReturnType<typeof authControllerGetProfile>>, TError = AxiosError<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof authControllerGetProfile>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getAuthControllerGetProfileQueryOptions = <TData = Awaited<ReturnType<typeof authControllerGetProfile>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof authControllerGetProfile>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAuthControllerGetProfileQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof authControllerGetProfile>>> = ({ signal }) => authControllerGetProfile({ signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof authControllerGetProfile>>> = ({ signal }) => authControllerGetProfile(requestOptions, signal);
 
       
 
@@ -1324,15 +1373,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type AuthControllerGetProfileQueryResult = NonNullable<Awaited<ReturnType<typeof authControllerGetProfile>>>
-export type AuthControllerGetProfileQueryError = AxiosError<void>
+export type AuthControllerGetProfileQueryError = ErrorType<void>
 
 
 /**
  * @summary Obter informações do usuário autenticado
  */
 
-export function useAuthControllerGetProfile<TData = Awaited<ReturnType<typeof authControllerGetProfile>>, TError = AxiosError<void>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof authControllerGetProfile>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useAuthControllerGetProfile<TData = Awaited<ReturnType<typeof authControllerGetProfile>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof authControllerGetProfile>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -1352,27 +1401,29 @@ export function useAuthControllerGetProfile<TData = Awaited<ReturnType<typeof au
  * @summary Validar token de acesso
  */
 export const authControllerValidateToken = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
     
-    
-    return axios.post(
-      `/auth/validate-token`,undefined,options
-    );
-  }
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/auth/validate-token`, method: 'POST', signal
+    },
+      options);
+    }
+  
 
 
-
-export const getAuthControllerValidateTokenMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerValidateToken>>, TError,void, TContext>, axios?: AxiosRequestConfig}
+export const getAuthControllerValidateTokenMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerValidateToken>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof authControllerValidateToken>>, TError,void, TContext> => {
     
 const mutationKey = ['authControllerValidateToken'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -1380,7 +1431,7 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof authControllerValidateToken>>, void> = () => {
           
 
-          return  authControllerValidateToken(axiosOptions)
+          return  authControllerValidateToken(requestOptions)
         }
 
         
@@ -1390,13 +1441,13 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
 
     export type AuthControllerValidateTokenMutationResult = NonNullable<Awaited<ReturnType<typeof authControllerValidateToken>>>
     
-    export type AuthControllerValidateTokenMutationError = AxiosError<void>
+    export type AuthControllerValidateTokenMutationError = ErrorType<void>
 
     /**
  * @summary Validar token de acesso
  */
-export const useAuthControllerValidateToken = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerValidateToken>>, TError,void, TContext>, axios?: AxiosRequestConfig}
+export const useAuthControllerValidateToken = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof authControllerValidateToken>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof authControllerValidateToken>>,
         TError,
@@ -1413,36 +1464,39 @@ export const useAuthControllerValidateToken = <TError = AxiosError<void>,
  * @summary Criar um novo funcionário
  */
 export const funcionarioControllerCreate = (
-    createFuncionarioDto: CreateFuncionarioDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/funcionario`,
-      createFuncionarioDto,options
-    );
-  }
+    createFuncionarioDto: BodyType<CreateFuncionarioDto>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/funcionario`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createFuncionarioDto, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getFuncionarioControllerCreateMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerCreate>>, TError,{data: CreateFuncionarioDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerCreate>>, TError,{data: CreateFuncionarioDto}, TContext> => {
+export const getFuncionarioControllerCreateMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerCreate>>, TError,{data: BodyType<CreateFuncionarioDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerCreate>>, TError,{data: BodyType<CreateFuncionarioDto>}, TContext> => {
     
 const mutationKey = ['funcionarioControllerCreate'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof funcionarioControllerCreate>>, {data: CreateFuncionarioDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof funcionarioControllerCreate>>, {data: BodyType<CreateFuncionarioDto>}> = (props) => {
           const {data} = props ?? {};
 
-          return  funcionarioControllerCreate(data,axiosOptions)
+          return  funcionarioControllerCreate(data,requestOptions)
         }
 
         
@@ -1451,18 +1505,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type FuncionarioControllerCreateMutationResult = NonNullable<Awaited<ReturnType<typeof funcionarioControllerCreate>>>
-    export type FuncionarioControllerCreateMutationBody = CreateFuncionarioDto
-    export type FuncionarioControllerCreateMutationError = AxiosError<void>
+    export type FuncionarioControllerCreateMutationBody = BodyType<CreateFuncionarioDto>
+    export type FuncionarioControllerCreateMutationError = ErrorType<void>
 
     /**
  * @summary Criar um novo funcionário
  */
-export const useFuncionarioControllerCreate = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerCreate>>, TError,{data: CreateFuncionarioDto}, TContext>, axios?: AxiosRequestConfig}
+export const useFuncionarioControllerCreate = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerCreate>>, TError,{data: BodyType<CreateFuncionarioDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof funcionarioControllerCreate>>,
         TError,
-        {data: CreateFuncionarioDto},
+        {data: BodyType<CreateFuncionarioDto>},
         TContext
       > => {
 
@@ -1475,31 +1529,33 @@ export const useFuncionarioControllerCreate = <TError = AxiosError<void>,
  * @summary Listar todos os funcionários
  */
 export const funcionarioControllerFindAll = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
     
-    
-    return axios.get(
-      `/funcionario`,options
-    );
-  }
-
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/funcionario`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getFuncionarioControllerFindAllQueryKey = () => {
     return [`/funcionario`] as const;
     }
 
     
-export const getFuncionarioControllerFindAllQueryOptions = <TData = Awaited<ReturnType<typeof funcionarioControllerFindAll>>, TError = AxiosError<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof funcionarioControllerFindAll>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getFuncionarioControllerFindAllQueryOptions = <TData = Awaited<ReturnType<typeof funcionarioControllerFindAll>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof funcionarioControllerFindAll>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getFuncionarioControllerFindAllQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof funcionarioControllerFindAll>>> = ({ signal }) => funcionarioControllerFindAll({ signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof funcionarioControllerFindAll>>> = ({ signal }) => funcionarioControllerFindAll(requestOptions, signal);
 
       
 
@@ -1509,15 +1565,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type FuncionarioControllerFindAllQueryResult = NonNullable<Awaited<ReturnType<typeof funcionarioControllerFindAll>>>
-export type FuncionarioControllerFindAllQueryError = AxiosError<unknown>
+export type FuncionarioControllerFindAllQueryError = ErrorType<unknown>
 
 
 /**
  * @summary Listar todos os funcionários
  */
 
-export function useFuncionarioControllerFindAll<TData = Awaited<ReturnType<typeof funcionarioControllerFindAll>>, TError = AxiosError<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof funcionarioControllerFindAll>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useFuncionarioControllerFindAll<TData = Awaited<ReturnType<typeof funcionarioControllerFindAll>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof funcionarioControllerFindAll>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -1537,31 +1593,33 @@ export function useFuncionarioControllerFindAll<TData = Awaited<ReturnType<typeo
  * @summary Obter um funcionário pelo ID
  */
 export const funcionarioControllerFindOne = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.get(
-      `/funcionario/${id}`,options
-    );
-  }
-
+    id: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/funcionario/${id}`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getFuncionarioControllerFindOneQueryKey = (id: number,) => {
     return [`/funcionario/${id}`] as const;
     }
 
     
-export const getFuncionarioControllerFindOneQueryOptions = <TData = Awaited<ReturnType<typeof funcionarioControllerFindOne>>, TError = AxiosError<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof funcionarioControllerFindOne>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getFuncionarioControllerFindOneQueryOptions = <TData = Awaited<ReturnType<typeof funcionarioControllerFindOne>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof funcionarioControllerFindOne>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getFuncionarioControllerFindOneQueryKey(id);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof funcionarioControllerFindOne>>> = ({ signal }) => funcionarioControllerFindOne(id, { signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof funcionarioControllerFindOne>>> = ({ signal }) => funcionarioControllerFindOne(id, requestOptions, signal);
 
       
 
@@ -1571,15 +1629,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type FuncionarioControllerFindOneQueryResult = NonNullable<Awaited<ReturnType<typeof funcionarioControllerFindOne>>>
-export type FuncionarioControllerFindOneQueryError = AxiosError<void>
+export type FuncionarioControllerFindOneQueryError = ErrorType<void>
 
 
 /**
  * @summary Obter um funcionário pelo ID
  */
 
-export function useFuncionarioControllerFindOne<TData = Awaited<ReturnType<typeof funcionarioControllerFindOne>>, TError = AxiosError<void>>(
- id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof funcionarioControllerFindOne>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useFuncionarioControllerFindOne<TData = Awaited<ReturnType<typeof funcionarioControllerFindOne>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof funcionarioControllerFindOne>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -1600,36 +1658,38 @@ export function useFuncionarioControllerFindOne<TData = Awaited<ReturnType<typeo
  */
 export const funcionarioControllerUpdate = (
     id: number,
-    updateFuncionarioDto: UpdateFuncionarioDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.put(
-      `/funcionario/${id}`,
-      updateFuncionarioDto,options
-    );
-  }
+    updateFuncionarioDto: BodyType<UpdateFuncionarioDto>,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/funcionario/${id}`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: updateFuncionarioDto
+    },
+      options);
+    }
+  
 
 
-
-export const getFuncionarioControllerUpdateMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerUpdate>>, TError,{id: number;data: UpdateFuncionarioDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerUpdate>>, TError,{id: number;data: UpdateFuncionarioDto}, TContext> => {
+export const getFuncionarioControllerUpdateMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerUpdate>>, TError,{id: number;data: BodyType<UpdateFuncionarioDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerUpdate>>, TError,{id: number;data: BodyType<UpdateFuncionarioDto>}, TContext> => {
     
 const mutationKey = ['funcionarioControllerUpdate'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof funcionarioControllerUpdate>>, {id: number;data: UpdateFuncionarioDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof funcionarioControllerUpdate>>, {id: number;data: BodyType<UpdateFuncionarioDto>}> = (props) => {
           const {id,data} = props ?? {};
 
-          return  funcionarioControllerUpdate(id,data,axiosOptions)
+          return  funcionarioControllerUpdate(id,data,requestOptions)
         }
 
         
@@ -1638,18 +1698,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type FuncionarioControllerUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof funcionarioControllerUpdate>>>
-    export type FuncionarioControllerUpdateMutationBody = UpdateFuncionarioDto
-    export type FuncionarioControllerUpdateMutationError = AxiosError<void>
+    export type FuncionarioControllerUpdateMutationBody = BodyType<UpdateFuncionarioDto>
+    export type FuncionarioControllerUpdateMutationError = ErrorType<void>
 
     /**
  * @summary Atualizar um funcionário pelo ID
  */
-export const useFuncionarioControllerUpdate = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerUpdate>>, TError,{id: number;data: UpdateFuncionarioDto}, TContext>, axios?: AxiosRequestConfig}
+export const useFuncionarioControllerUpdate = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerUpdate>>, TError,{id: number;data: BodyType<UpdateFuncionarioDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof funcionarioControllerUpdate>>,
         TError,
-        {id: number;data: UpdateFuncionarioDto},
+        {id: number;data: BodyType<UpdateFuncionarioDto>},
         TContext
       > => {
 
@@ -1662,27 +1722,28 @@ export const useFuncionarioControllerUpdate = <TError = AxiosError<void>,
  * @summary Remover um funcionário pelo ID
  */
 export const funcionarioControllerRemove = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.delete(
-      `/funcionario/${id}`,options
-    );
-  }
+    id: number,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/funcionario/${id}`, method: 'DELETE'
+    },
+      options);
+    }
+  
 
 
-
-export const getFuncionarioControllerRemoveMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerRemove>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+export const getFuncionarioControllerRemoveMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerRemove>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerRemove>>, TError,{id: number}, TContext> => {
     
 const mutationKey = ['funcionarioControllerRemove'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -1690,7 +1751,7 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof funcionarioControllerRemove>>, {id: number}> = (props) => {
           const {id} = props ?? {};
 
-          return  funcionarioControllerRemove(id,axiosOptions)
+          return  funcionarioControllerRemove(id,requestOptions)
         }
 
         
@@ -1700,13 +1761,13 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
 
     export type FuncionarioControllerRemoveMutationResult = NonNullable<Awaited<ReturnType<typeof funcionarioControllerRemove>>>
     
-    export type FuncionarioControllerRemoveMutationError = AxiosError<void>
+    export type FuncionarioControllerRemoveMutationError = ErrorType<void>
 
     /**
  * @summary Remover um funcionário pelo ID
  */
-export const useFuncionarioControllerRemove = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerRemove>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+export const useFuncionarioControllerRemove = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof funcionarioControllerRemove>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof funcionarioControllerRemove>>,
         TError,
@@ -1723,36 +1784,39 @@ export const useFuncionarioControllerRemove = <TError = AxiosError<void>,
  * @summary Criar um novo gestor
  */
 export const gestaoControllerCreate = (
-    createGestorDto: CreateGestorDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/gestao`,
-      createGestorDto,options
-    );
-  }
+    createGestorDto: BodyType<CreateGestorDto>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/gestao`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createGestorDto, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getGestaoControllerCreateMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerCreate>>, TError,{data: CreateGestorDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerCreate>>, TError,{data: CreateGestorDto}, TContext> => {
+export const getGestaoControllerCreateMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerCreate>>, TError,{data: BodyType<CreateGestorDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerCreate>>, TError,{data: BodyType<CreateGestorDto>}, TContext> => {
     
 const mutationKey = ['gestaoControllerCreate'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof gestaoControllerCreate>>, {data: CreateGestorDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof gestaoControllerCreate>>, {data: BodyType<CreateGestorDto>}> = (props) => {
           const {data} = props ?? {};
 
-          return  gestaoControllerCreate(data,axiosOptions)
+          return  gestaoControllerCreate(data,requestOptions)
         }
 
         
@@ -1761,18 +1825,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type GestaoControllerCreateMutationResult = NonNullable<Awaited<ReturnType<typeof gestaoControllerCreate>>>
-    export type GestaoControllerCreateMutationBody = CreateGestorDto
-    export type GestaoControllerCreateMutationError = AxiosError<void>
+    export type GestaoControllerCreateMutationBody = BodyType<CreateGestorDto>
+    export type GestaoControllerCreateMutationError = ErrorType<void>
 
     /**
  * @summary Criar um novo gestor
  */
-export const useGestaoControllerCreate = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerCreate>>, TError,{data: CreateGestorDto}, TContext>, axios?: AxiosRequestConfig}
+export const useGestaoControllerCreate = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerCreate>>, TError,{data: BodyType<CreateGestorDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof gestaoControllerCreate>>,
         TError,
-        {data: CreateGestorDto},
+        {data: BodyType<CreateGestorDto>},
         TContext
       > => {
 
@@ -1785,31 +1849,33 @@ export const useGestaoControllerCreate = <TError = AxiosError<void>,
  * @summary Listar todos os gestores
  */
 export const gestaoControllerFindAll = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
     
-    
-    return axios.get(
-      `/gestao`,options
-    );
-  }
-
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/gestao`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getGestaoControllerFindAllQueryKey = () => {
     return [`/gestao`] as const;
     }
 
     
-export const getGestaoControllerFindAllQueryOptions = <TData = Awaited<ReturnType<typeof gestaoControllerFindAll>>, TError = AxiosError<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof gestaoControllerFindAll>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getGestaoControllerFindAllQueryOptions = <TData = Awaited<ReturnType<typeof gestaoControllerFindAll>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof gestaoControllerFindAll>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getGestaoControllerFindAllQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof gestaoControllerFindAll>>> = ({ signal }) => gestaoControllerFindAll({ signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof gestaoControllerFindAll>>> = ({ signal }) => gestaoControllerFindAll(requestOptions, signal);
 
       
 
@@ -1819,15 +1885,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type GestaoControllerFindAllQueryResult = NonNullable<Awaited<ReturnType<typeof gestaoControllerFindAll>>>
-export type GestaoControllerFindAllQueryError = AxiosError<unknown>
+export type GestaoControllerFindAllQueryError = ErrorType<unknown>
 
 
 /**
  * @summary Listar todos os gestores
  */
 
-export function useGestaoControllerFindAll<TData = Awaited<ReturnType<typeof gestaoControllerFindAll>>, TError = AxiosError<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof gestaoControllerFindAll>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useGestaoControllerFindAll<TData = Awaited<ReturnType<typeof gestaoControllerFindAll>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof gestaoControllerFindAll>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -1847,31 +1913,33 @@ export function useGestaoControllerFindAll<TData = Awaited<ReturnType<typeof ges
  * @summary Obter um gestor pelo ID
  */
 export const gestaoControllerFindOne = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.get(
-      `/gestao/${id}`,options
-    );
-  }
-
+    id: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/gestao/${id}`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getGestaoControllerFindOneQueryKey = (id: number,) => {
     return [`/gestao/${id}`] as const;
     }
 
     
-export const getGestaoControllerFindOneQueryOptions = <TData = Awaited<ReturnType<typeof gestaoControllerFindOne>>, TError = AxiosError<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof gestaoControllerFindOne>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getGestaoControllerFindOneQueryOptions = <TData = Awaited<ReturnType<typeof gestaoControllerFindOne>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof gestaoControllerFindOne>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getGestaoControllerFindOneQueryKey(id);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof gestaoControllerFindOne>>> = ({ signal }) => gestaoControllerFindOne(id, { signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof gestaoControllerFindOne>>> = ({ signal }) => gestaoControllerFindOne(id, requestOptions, signal);
 
       
 
@@ -1881,15 +1949,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type GestaoControllerFindOneQueryResult = NonNullable<Awaited<ReturnType<typeof gestaoControllerFindOne>>>
-export type GestaoControllerFindOneQueryError = AxiosError<void>
+export type GestaoControllerFindOneQueryError = ErrorType<void>
 
 
 /**
  * @summary Obter um gestor pelo ID
  */
 
-export function useGestaoControllerFindOne<TData = Awaited<ReturnType<typeof gestaoControllerFindOne>>, TError = AxiosError<void>>(
- id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof gestaoControllerFindOne>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useGestaoControllerFindOne<TData = Awaited<ReturnType<typeof gestaoControllerFindOne>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof gestaoControllerFindOne>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -1910,36 +1978,38 @@ export function useGestaoControllerFindOne<TData = Awaited<ReturnType<typeof ges
  */
 export const gestaoControllerUpdate = (
     id: number,
-    updateGestorDto: UpdateGestorDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.put(
-      `/gestao/${id}`,
-      updateGestorDto,options
-    );
-  }
+    updateGestorDto: BodyType<UpdateGestorDto>,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/gestao/${id}`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: updateGestorDto
+    },
+      options);
+    }
+  
 
 
-
-export const getGestaoControllerUpdateMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerUpdate>>, TError,{id: number;data: UpdateGestorDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerUpdate>>, TError,{id: number;data: UpdateGestorDto}, TContext> => {
+export const getGestaoControllerUpdateMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerUpdate>>, TError,{id: number;data: BodyType<UpdateGestorDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerUpdate>>, TError,{id: number;data: BodyType<UpdateGestorDto>}, TContext> => {
     
 const mutationKey = ['gestaoControllerUpdate'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof gestaoControllerUpdate>>, {id: number;data: UpdateGestorDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof gestaoControllerUpdate>>, {id: number;data: BodyType<UpdateGestorDto>}> = (props) => {
           const {id,data} = props ?? {};
 
-          return  gestaoControllerUpdate(id,data,axiosOptions)
+          return  gestaoControllerUpdate(id,data,requestOptions)
         }
 
         
@@ -1948,18 +2018,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type GestaoControllerUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof gestaoControllerUpdate>>>
-    export type GestaoControllerUpdateMutationBody = UpdateGestorDto
-    export type GestaoControllerUpdateMutationError = AxiosError<void>
+    export type GestaoControllerUpdateMutationBody = BodyType<UpdateGestorDto>
+    export type GestaoControllerUpdateMutationError = ErrorType<void>
 
     /**
  * @summary Atualizar um gestor pelo ID
  */
-export const useGestaoControllerUpdate = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerUpdate>>, TError,{id: number;data: UpdateGestorDto}, TContext>, axios?: AxiosRequestConfig}
+export const useGestaoControllerUpdate = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerUpdate>>, TError,{id: number;data: BodyType<UpdateGestorDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof gestaoControllerUpdate>>,
         TError,
-        {id: number;data: UpdateGestorDto},
+        {id: number;data: BodyType<UpdateGestorDto>},
         TContext
       > => {
 
@@ -1972,27 +2042,28 @@ export const useGestaoControllerUpdate = <TError = AxiosError<void>,
  * @summary Remover um gestor pelo ID
  */
 export const gestaoControllerRemove = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.delete(
-      `/gestao/${id}`,options
-    );
-  }
+    id: number,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/gestao/${id}`, method: 'DELETE'
+    },
+      options);
+    }
+  
 
 
-
-export const getGestaoControllerRemoveMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerRemove>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+export const getGestaoControllerRemoveMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerRemove>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerRemove>>, TError,{id: number}, TContext> => {
     
 const mutationKey = ['gestaoControllerRemove'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -2000,7 +2071,7 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof gestaoControllerRemove>>, {id: number}> = (props) => {
           const {id} = props ?? {};
 
-          return  gestaoControllerRemove(id,axiosOptions)
+          return  gestaoControllerRemove(id,requestOptions)
         }
 
         
@@ -2010,13 +2081,13 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
 
     export type GestaoControllerRemoveMutationResult = NonNullable<Awaited<ReturnType<typeof gestaoControllerRemove>>>
     
-    export type GestaoControllerRemoveMutationError = AxiosError<void>
+    export type GestaoControllerRemoveMutationError = ErrorType<void>
 
     /**
  * @summary Remover um gestor pelo ID
  */
-export const useGestaoControllerRemove = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerRemove>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+export const useGestaoControllerRemove = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof gestaoControllerRemove>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof gestaoControllerRemove>>,
         TError,
@@ -2033,36 +2104,39 @@ export const useGestaoControllerRemove = <TError = AxiosError<void>,
  * @summary Criar um novo produto
  */
 export const productsControllerCreate = (
-    createProductDto: CreateProductDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/products`,
-      createProductDto,options
-    );
-  }
+    createProductDto: BodyType<CreateProductDto>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/products`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createProductDto, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getProductsControllerCreateMutationOptions = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productsControllerCreate>>, TError,{data: CreateProductDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof productsControllerCreate>>, TError,{data: CreateProductDto}, TContext> => {
+export const getProductsControllerCreateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productsControllerCreate>>, TError,{data: BodyType<CreateProductDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof productsControllerCreate>>, TError,{data: BodyType<CreateProductDto>}, TContext> => {
     
 const mutationKey = ['productsControllerCreate'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof productsControllerCreate>>, {data: CreateProductDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof productsControllerCreate>>, {data: BodyType<CreateProductDto>}> = (props) => {
           const {data} = props ?? {};
 
-          return  productsControllerCreate(data,axiosOptions)
+          return  productsControllerCreate(data,requestOptions)
         }
 
         
@@ -2071,18 +2145,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ProductsControllerCreateMutationResult = NonNullable<Awaited<ReturnType<typeof productsControllerCreate>>>
-    export type ProductsControllerCreateMutationBody = CreateProductDto
-    export type ProductsControllerCreateMutationError = AxiosError<unknown>
+    export type ProductsControllerCreateMutationBody = BodyType<CreateProductDto>
+    export type ProductsControllerCreateMutationError = ErrorType<unknown>
 
     /**
  * @summary Criar um novo produto
  */
-export const useProductsControllerCreate = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productsControllerCreate>>, TError,{data: CreateProductDto}, TContext>, axios?: AxiosRequestConfig}
+export const useProductsControllerCreate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productsControllerCreate>>, TError,{data: BodyType<CreateProductDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof productsControllerCreate>>,
         TError,
-        {data: CreateProductDto},
+        {data: BodyType<CreateProductDto>},
         TContext
       > => {
 
@@ -2095,31 +2169,33 @@ export const useProductsControllerCreate = <TError = AxiosError<unknown>,
  * @summary Listar todos os produtos
  */
 export const productsControllerFindAll = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
     
-    
-    return axios.get(
-      `/products`,options
-    );
-  }
-
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/products`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getProductsControllerFindAllQueryKey = () => {
     return [`/products`] as const;
     }
 
     
-export const getProductsControllerFindAllQueryOptions = <TData = Awaited<ReturnType<typeof productsControllerFindAll>>, TError = AxiosError<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof productsControllerFindAll>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getProductsControllerFindAllQueryOptions = <TData = Awaited<ReturnType<typeof productsControllerFindAll>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof productsControllerFindAll>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getProductsControllerFindAllQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof productsControllerFindAll>>> = ({ signal }) => productsControllerFindAll({ signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof productsControllerFindAll>>> = ({ signal }) => productsControllerFindAll(requestOptions, signal);
 
       
 
@@ -2129,15 +2205,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type ProductsControllerFindAllQueryResult = NonNullable<Awaited<ReturnType<typeof productsControllerFindAll>>>
-export type ProductsControllerFindAllQueryError = AxiosError<unknown>
+export type ProductsControllerFindAllQueryError = ErrorType<unknown>
 
 
 /**
  * @summary Listar todos os produtos
  */
 
-export function useProductsControllerFindAll<TData = Awaited<ReturnType<typeof productsControllerFindAll>>, TError = AxiosError<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof productsControllerFindAll>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useProductsControllerFindAll<TData = Awaited<ReturnType<typeof productsControllerFindAll>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof productsControllerFindAll>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -2157,31 +2233,33 @@ export function useProductsControllerFindAll<TData = Awaited<ReturnType<typeof p
  * @summary Buscar um produto por ID
  */
 export const productsControllerFindOne = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.get(
-      `/products/${id}`,options
-    );
-  }
-
+    id: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/products/${id}`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getProductsControllerFindOneQueryKey = (id: number,) => {
     return [`/products/${id}`] as const;
     }
 
     
-export const getProductsControllerFindOneQueryOptions = <TData = Awaited<ReturnType<typeof productsControllerFindOne>>, TError = AxiosError<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof productsControllerFindOne>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getProductsControllerFindOneQueryOptions = <TData = Awaited<ReturnType<typeof productsControllerFindOne>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof productsControllerFindOne>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getProductsControllerFindOneQueryKey(id);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof productsControllerFindOne>>> = ({ signal }) => productsControllerFindOne(id, { signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof productsControllerFindOne>>> = ({ signal }) => productsControllerFindOne(id, requestOptions, signal);
 
       
 
@@ -2191,15 +2269,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type ProductsControllerFindOneQueryResult = NonNullable<Awaited<ReturnType<typeof productsControllerFindOne>>>
-export type ProductsControllerFindOneQueryError = AxiosError<unknown>
+export type ProductsControllerFindOneQueryError = ErrorType<unknown>
 
 
 /**
  * @summary Buscar um produto por ID
  */
 
-export function useProductsControllerFindOne<TData = Awaited<ReturnType<typeof productsControllerFindOne>>, TError = AxiosError<unknown>>(
- id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof productsControllerFindOne>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useProductsControllerFindOne<TData = Awaited<ReturnType<typeof productsControllerFindOne>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof productsControllerFindOne>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -2220,36 +2298,38 @@ export function useProductsControllerFindOne<TData = Awaited<ReturnType<typeof p
  */
 export const productsControllerUpdate = (
     id: number,
-    updateProductDto: UpdateProductDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.put(
-      `/products/${id}`,
-      updateProductDto,options
-    );
-  }
+    updateProductDto: BodyType<UpdateProductDto>,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/products/${id}`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: updateProductDto
+    },
+      options);
+    }
+  
 
 
-
-export const getProductsControllerUpdateMutationOptions = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productsControllerUpdate>>, TError,{id: number;data: UpdateProductDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof productsControllerUpdate>>, TError,{id: number;data: UpdateProductDto}, TContext> => {
+export const getProductsControllerUpdateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productsControllerUpdate>>, TError,{id: number;data: BodyType<UpdateProductDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof productsControllerUpdate>>, TError,{id: number;data: BodyType<UpdateProductDto>}, TContext> => {
     
 const mutationKey = ['productsControllerUpdate'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof productsControllerUpdate>>, {id: number;data: UpdateProductDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof productsControllerUpdate>>, {id: number;data: BodyType<UpdateProductDto>}> = (props) => {
           const {id,data} = props ?? {};
 
-          return  productsControllerUpdate(id,data,axiosOptions)
+          return  productsControllerUpdate(id,data,requestOptions)
         }
 
         
@@ -2258,18 +2338,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ProductsControllerUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof productsControllerUpdate>>>
-    export type ProductsControllerUpdateMutationBody = UpdateProductDto
-    export type ProductsControllerUpdateMutationError = AxiosError<unknown>
+    export type ProductsControllerUpdateMutationBody = BodyType<UpdateProductDto>
+    export type ProductsControllerUpdateMutationError = ErrorType<unknown>
 
     /**
  * @summary Atualizar um produto existente
  */
-export const useProductsControllerUpdate = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productsControllerUpdate>>, TError,{id: number;data: UpdateProductDto}, TContext>, axios?: AxiosRequestConfig}
+export const useProductsControllerUpdate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productsControllerUpdate>>, TError,{id: number;data: BodyType<UpdateProductDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof productsControllerUpdate>>,
         TError,
-        {id: number;data: UpdateProductDto},
+        {id: number;data: BodyType<UpdateProductDto>},
         TContext
       > => {
 
@@ -2282,27 +2362,28 @@ export const useProductsControllerUpdate = <TError = AxiosError<unknown>,
  * @summary Excluir um produto
  */
 export const productsControllerRemove = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.delete(
-      `/products/${id}`,options
-    );
-  }
+    id: number,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/products/${id}`, method: 'DELETE'
+    },
+      options);
+    }
+  
 
 
-
-export const getProductsControllerRemoveMutationOptions = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productsControllerRemove>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+export const getProductsControllerRemoveMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productsControllerRemove>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof productsControllerRemove>>, TError,{id: number}, TContext> => {
     
 const mutationKey = ['productsControllerRemove'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -2310,7 +2391,7 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof productsControllerRemove>>, {id: number}> = (props) => {
           const {id} = props ?? {};
 
-          return  productsControllerRemove(id,axiosOptions)
+          return  productsControllerRemove(id,requestOptions)
         }
 
         
@@ -2320,13 +2401,13 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
 
     export type ProductsControllerRemoveMutationResult = NonNullable<Awaited<ReturnType<typeof productsControllerRemove>>>
     
-    export type ProductsControllerRemoveMutationError = AxiosError<unknown>
+    export type ProductsControllerRemoveMutationError = ErrorType<unknown>
 
     /**
  * @summary Excluir um produto
  */
-export const useProductsControllerRemove = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productsControllerRemove>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+export const useProductsControllerRemove = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productsControllerRemove>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof productsControllerRemove>>,
         TError,
@@ -2343,36 +2424,39 @@ export const useProductsControllerRemove = <TError = AxiosError<unknown>,
  * @summary Criar um novo setor
  */
 export const sectorsControllerCreate = (
-    createSectorDto: CreateSectorDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/sectors`,
-      createSectorDto,options
-    );
-  }
+    createSectorDto: BodyType<CreateSectorDto>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/sectors`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createSectorDto, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getSectorsControllerCreateMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerCreate>>, TError,{data: CreateSectorDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerCreate>>, TError,{data: CreateSectorDto}, TContext> => {
+export const getSectorsControllerCreateMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerCreate>>, TError,{data: BodyType<CreateSectorDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerCreate>>, TError,{data: BodyType<CreateSectorDto>}, TContext> => {
     
 const mutationKey = ['sectorsControllerCreate'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sectorsControllerCreate>>, {data: CreateSectorDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sectorsControllerCreate>>, {data: BodyType<CreateSectorDto>}> = (props) => {
           const {data} = props ?? {};
 
-          return  sectorsControllerCreate(data,axiosOptions)
+          return  sectorsControllerCreate(data,requestOptions)
         }
 
         
@@ -2381,18 +2465,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type SectorsControllerCreateMutationResult = NonNullable<Awaited<ReturnType<typeof sectorsControllerCreate>>>
-    export type SectorsControllerCreateMutationBody = CreateSectorDto
-    export type SectorsControllerCreateMutationError = AxiosError<void>
+    export type SectorsControllerCreateMutationBody = BodyType<CreateSectorDto>
+    export type SectorsControllerCreateMutationError = ErrorType<void>
 
     /**
  * @summary Criar um novo setor
  */
-export const useSectorsControllerCreate = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerCreate>>, TError,{data: CreateSectorDto}, TContext>, axios?: AxiosRequestConfig}
+export const useSectorsControllerCreate = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerCreate>>, TError,{data: BodyType<CreateSectorDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof sectorsControllerCreate>>,
         TError,
-        {data: CreateSectorDto},
+        {data: BodyType<CreateSectorDto>},
         TContext
       > => {
 
@@ -2405,31 +2489,33 @@ export const useSectorsControllerCreate = <TError = AxiosError<void>,
  * @summary Listar todos os setores
  */
 export const sectorsControllerFindAll = (
-     options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
     
-    
-    return axios.get(
-      `/sectors`,options
-    );
-  }
-
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/sectors`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getSectorsControllerFindAllQueryKey = () => {
     return [`/sectors`] as const;
     }
 
     
-export const getSectorsControllerFindAllQueryOptions = <TData = Awaited<ReturnType<typeof sectorsControllerFindAll>>, TError = AxiosError<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof sectorsControllerFindAll>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getSectorsControllerFindAllQueryOptions = <TData = Awaited<ReturnType<typeof sectorsControllerFindAll>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof sectorsControllerFindAll>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getSectorsControllerFindAllQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof sectorsControllerFindAll>>> = ({ signal }) => sectorsControllerFindAll({ signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sectorsControllerFindAll>>> = ({ signal }) => sectorsControllerFindAll(requestOptions, signal);
 
       
 
@@ -2439,15 +2525,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type SectorsControllerFindAllQueryResult = NonNullable<Awaited<ReturnType<typeof sectorsControllerFindAll>>>
-export type SectorsControllerFindAllQueryError = AxiosError<unknown>
+export type SectorsControllerFindAllQueryError = ErrorType<unknown>
 
 
 /**
  * @summary Listar todos os setores
  */
 
-export function useSectorsControllerFindAll<TData = Awaited<ReturnType<typeof sectorsControllerFindAll>>, TError = AxiosError<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof sectorsControllerFindAll>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useSectorsControllerFindAll<TData = Awaited<ReturnType<typeof sectorsControllerFindAll>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof sectorsControllerFindAll>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -2467,31 +2553,33 @@ export function useSectorsControllerFindAll<TData = Awaited<ReturnType<typeof se
  * @summary Obter um setor pelo ID
  */
 export const sectorsControllerFindOne = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.get(
-      `/sectors/${id}`,options
-    );
-  }
-
+    id: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/sectors/${id}`, method: 'GET', signal
+    },
+      options);
+    }
+  
 
 export const getSectorsControllerFindOneQueryKey = (id: number,) => {
     return [`/sectors/${id}`] as const;
     }
 
     
-export const getSectorsControllerFindOneQueryOptions = <TData = Awaited<ReturnType<typeof sectorsControllerFindOne>>, TError = AxiosError<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof sectorsControllerFindOne>>, TError, TData>, axios?: AxiosRequestConfig}
+export const getSectorsControllerFindOneQueryOptions = <TData = Awaited<ReturnType<typeof sectorsControllerFindOne>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof sectorsControllerFindOne>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions, axios: axiosOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getSectorsControllerFindOneQueryKey(id);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof sectorsControllerFindOne>>> = ({ signal }) => sectorsControllerFindOne(id, { signal, ...axiosOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sectorsControllerFindOne>>> = ({ signal }) => sectorsControllerFindOne(id, requestOptions, signal);
 
       
 
@@ -2501,15 +2589,15 @@ const {query: queryOptions, axios: axiosOptions} = options ?? {};
 }
 
 export type SectorsControllerFindOneQueryResult = NonNullable<Awaited<ReturnType<typeof sectorsControllerFindOne>>>
-export type SectorsControllerFindOneQueryError = AxiosError<void>
+export type SectorsControllerFindOneQueryError = ErrorType<void>
 
 
 /**
  * @summary Obter um setor pelo ID
  */
 
-export function useSectorsControllerFindOne<TData = Awaited<ReturnType<typeof sectorsControllerFindOne>>, TError = AxiosError<void>>(
- id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof sectorsControllerFindOne>>, TError, TData>, axios?: AxiosRequestConfig}
+export function useSectorsControllerFindOne<TData = Awaited<ReturnType<typeof sectorsControllerFindOne>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof sectorsControllerFindOne>>, TError, TData>, request?: SecondParameter<typeof customInstance>}
 
   ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
@@ -2530,36 +2618,38 @@ export function useSectorsControllerFindOne<TData = Awaited<ReturnType<typeof se
  */
 export const sectorsControllerUpdate = (
     id: number,
-    updateSectorDto: UpdateSectorDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.put(
-      `/sectors/${id}`,
-      updateSectorDto,options
-    );
-  }
+    updateSectorDto: BodyType<UpdateSectorDto>,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/sectors/${id}`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: updateSectorDto
+    },
+      options);
+    }
+  
 
 
-
-export const getSectorsControllerUpdateMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerUpdate>>, TError,{id: number;data: UpdateSectorDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerUpdate>>, TError,{id: number;data: UpdateSectorDto}, TContext> => {
+export const getSectorsControllerUpdateMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerUpdate>>, TError,{id: number;data: BodyType<UpdateSectorDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerUpdate>>, TError,{id: number;data: BodyType<UpdateSectorDto>}, TContext> => {
     
 const mutationKey = ['sectorsControllerUpdate'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sectorsControllerUpdate>>, {id: number;data: UpdateSectorDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sectorsControllerUpdate>>, {id: number;data: BodyType<UpdateSectorDto>}> = (props) => {
           const {id,data} = props ?? {};
 
-          return  sectorsControllerUpdate(id,data,axiosOptions)
+          return  sectorsControllerUpdate(id,data,requestOptions)
         }
 
         
@@ -2568,18 +2658,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type SectorsControllerUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof sectorsControllerUpdate>>>
-    export type SectorsControllerUpdateMutationBody = UpdateSectorDto
-    export type SectorsControllerUpdateMutationError = AxiosError<void>
+    export type SectorsControllerUpdateMutationBody = BodyType<UpdateSectorDto>
+    export type SectorsControllerUpdateMutationError = ErrorType<void>
 
     /**
  * @summary Atualizar um setor pelo ID
  */
-export const useSectorsControllerUpdate = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerUpdate>>, TError,{id: number;data: UpdateSectorDto}, TContext>, axios?: AxiosRequestConfig}
+export const useSectorsControllerUpdate = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerUpdate>>, TError,{id: number;data: BodyType<UpdateSectorDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof sectorsControllerUpdate>>,
         TError,
-        {id: number;data: UpdateSectorDto},
+        {id: number;data: BodyType<UpdateSectorDto>},
         TContext
       > => {
 
@@ -2592,27 +2682,28 @@ export const useSectorsControllerUpdate = <TError = AxiosError<void>,
  * @summary Remover um setor pelo ID
  */
 export const sectorsControllerRemove = (
-    id: number, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.delete(
-      `/sectors/${id}`,options
-    );
-  }
+    id: number,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/sectors/${id}`, method: 'DELETE'
+    },
+      options);
+    }
+  
 
 
-
-export const getSectorsControllerRemoveMutationOptions = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerRemove>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+export const getSectorsControllerRemoveMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerRemove>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerRemove>>, TError,{id: number}, TContext> => {
     
 const mutationKey = ['sectorsControllerRemove'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -2620,7 +2711,7 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof sectorsControllerRemove>>, {id: number}> = (props) => {
           const {id} = props ?? {};
 
-          return  sectorsControllerRemove(id,axiosOptions)
+          return  sectorsControllerRemove(id,requestOptions)
         }
 
         
@@ -2630,13 +2721,13 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
 
     export type SectorsControllerRemoveMutationResult = NonNullable<Awaited<ReturnType<typeof sectorsControllerRemove>>>
     
-    export type SectorsControllerRemoveMutationError = AxiosError<void>
+    export type SectorsControllerRemoveMutationError = ErrorType<void>
 
     /**
  * @summary Remover um setor pelo ID
  */
-export const useSectorsControllerRemove = <TError = AxiosError<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerRemove>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+export const useSectorsControllerRemove = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerRemove>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof sectorsControllerRemove>>,
         TError,
@@ -2654,36 +2745,39 @@ export const useSectorsControllerRemove = <TError = AxiosError<void>,
  */
 export const sectorsControllerAddConfig = (
     id: number,
-    addSectorConfigDto: AddSectorConfigDto, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<void>> => {
-    
-    
-    return axios.post(
-      `/sectors/${id}/config`,
-      addSectorConfigDto,options
-    );
-  }
+    addSectorConfigDto: BodyType<AddSectorConfigDto>,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/sectors/${id}/config`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: addSectorConfigDto, signal
+    },
+      options);
+    }
+  
 
 
-
-export const getSectorsControllerAddConfigMutationOptions = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerAddConfig>>, TError,{id: number;data: AddSectorConfigDto}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerAddConfig>>, TError,{id: number;data: AddSectorConfigDto}, TContext> => {
+export const getSectorsControllerAddConfigMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerAddConfig>>, TError,{id: number;data: BodyType<AddSectorConfigDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerAddConfig>>, TError,{id: number;data: BodyType<AddSectorConfigDto>}, TContext> => {
     
 const mutationKey = ['sectorsControllerAddConfig'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sectorsControllerAddConfig>>, {id: number;data: AddSectorConfigDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sectorsControllerAddConfig>>, {id: number;data: BodyType<AddSectorConfigDto>}> = (props) => {
           const {id,data} = props ?? {};
 
-          return  sectorsControllerAddConfig(id,data,axiosOptions)
+          return  sectorsControllerAddConfig(id,data,requestOptions)
         }
 
         
@@ -2692,18 +2786,18 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type SectorsControllerAddConfigMutationResult = NonNullable<Awaited<ReturnType<typeof sectorsControllerAddConfig>>>
-    export type SectorsControllerAddConfigMutationBody = AddSectorConfigDto
-    export type SectorsControllerAddConfigMutationError = AxiosError<unknown>
+    export type SectorsControllerAddConfigMutationBody = BodyType<AddSectorConfigDto>
+    export type SectorsControllerAddConfigMutationError = ErrorType<unknown>
 
     /**
  * @summary Adicionar uma configuração personalizada a um setor
  */
-export const useSectorsControllerAddConfig = <TError = AxiosError<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerAddConfig>>, TError,{id: number;data: AddSectorConfigDto}, TContext>, axios?: AxiosRequestConfig}
+export const useSectorsControllerAddConfig = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sectorsControllerAddConfig>>, TError,{id: number;data: BodyType<AddSectorConfigDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationResult<
         Awaited<ReturnType<typeof sectorsControllerAddConfig>>,
         TError,
-        {id: number;data: AddSectorConfigDto},
+        {id: number;data: BodyType<AddSectorConfigDto>},
         TContext
       > => {
 
