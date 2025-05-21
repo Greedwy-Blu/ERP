@@ -1,26 +1,39 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Picker } from 'react-native';
-import { COLORS } from '@/constants/colors';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
 import { useOrdersControllerListMotivosInterrupcao, useOrdersControllerAtualizarStatus } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 const OrdemUpdateStatusScreen = () => {
   const router = useRouter();
-  const { orderId, action } = useLocalSearchParams(); // action can be 'interrupt'
+  const { orderId, action } = useLocalSearchParams();
   const [userId, setUserId] = useState<number | null>(null);
   const [isLoadingUserId, setIsLoadingUserId] = useState(true);
   const [selectedMotivoId, setSelectedMotivoId] = useState<number | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   // Fetch user ID from storage
   useEffect(() => {
     const fetchUserId = async () => {
       try {
-        const storedUserId = await AsyncStorage.getItem('userId');
-        const token = await AsyncStorage.getItem('accessToken');
+        const storedUserId = await AsyncStorage.getItem('user_id');
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
         
-        if (!token) {
-          router.replace('/(login)/login');
+        if (!token || userRole !== 'funcionario') {
+          if (isMounted) {
+            setTimeout(() => {
+              router.replace('/(login)/login');
+            }, 0);
+          }
           return;
         }
         
@@ -29,24 +42,38 @@ const OrdemUpdateStatusScreen = () => {
         } else {
           console.error('User ID not found in storage.');
           Alert.alert('Erro', 'ID do usuário não encontrado. Por favor, faça login novamente.');
-          router.replace('/(login)/login');
+          if (isMounted) {
+            setTimeout(() => {
+              router.replace('/(login)/login');
+            }, 0);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch user ID from storage:', error);
         Alert.alert('Erro', 'Falha ao carregar dados do usuário. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        if (isMounted) {
+          setTimeout(() => {
+            router.replace('/(login)/login');
+          }, 0);
+        }
       } finally {
         setIsLoadingUserId(false);
       }
     };
 
     fetchUserId();
-  }, [router]);
+  }, [router, isMounted]);
 
   // Fetch interruption reasons
-  const { data: motivosResponse, isLoading: isLoadingMotivos, error: motivosError } = useOrdersControllerListMotivosInterrupcao({
+  const { 
+    data: motivosResponse, 
+    isLoading: isLoadingMotivos, 
+    error: motivosError,
+    refetch 
+  } = useOrdersControllerListMotivosInterrupcao({
     query: {
-      enabled: !isLoadingUserId && action === 'interrupt', // Only fetch if interrupting
+      queryKey: ['motivosInterrupcao', orderId],
+      enabled: !isLoadingUserId && action === 'interrupt' && isMounted,
     }
   });
   const motivos = motivosResponse?.data || [];
@@ -56,18 +83,20 @@ const OrdemUpdateStatusScreen = () => {
     mutation: {
       onSuccess: () => {
         Alert.alert('Sucesso', 'Status da ordem atualizado com sucesso.');
-        router.back(); // Go back to the previous screen (Order Detail)
+        if (isMounted) {
+          router.back();
+        }
       },
       onError: (error) => {
         console.error('Error updating order status:', error);
-        Alert.alert('Erro', 'Não foi possível atualizar o status da ordem.');
+        const errorMessage = error.response?.data?.message || 'Não foi possível atualizar o status da ordem.';
+        Alert.alert('Erro', errorMessage);
       }
     }
   });
 
-  // Handle status update submission
   const handleUpdateStatus = () => {
-    if (!orderId) return;
+    if (!isMounted || !orderId) return;
 
     if (action === 'interrupt') {
       if (!selectedMotivoId) {
@@ -79,10 +108,16 @@ const OrdemUpdateStatusScreen = () => {
         data: {
           status: 'interrompido',
           motivoId: selectedMotivoId,
+          funcionarioId: userId // Include the employee who performed the action
         }
       });
-    } 
-    // Add other actions if needed
+    }
+  };
+
+  const handleCancel = () => {
+    if (isMounted) {
+      router.back();
+    }
   };
 
   // Handle API errors
@@ -105,7 +140,9 @@ const OrdemUpdateStatusScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Atualizar Status da Ordem OP-{orderId}</Text>
+        <Text style={styles.headerTitle}>
+          {action === 'interrupt' ? 'Interromper Ordem' : 'Atualizar Status'} OP-{orderId}
+        </Text>
       </View>
 
       <View style={styles.content}>
@@ -117,16 +154,25 @@ const OrdemUpdateStatusScreen = () => {
                 selectedValue={selectedMotivoId}
                 onValueChange={(itemValue) => setSelectedMotivoId(itemValue)}
                 style={styles.picker}
+                dropdownIconColor={COLORS.primary}
               >
                 <Picker.Item label="-- Selecione um motivo --" value={null} />
                 {motivos.map((motivo) => (
-                  <Picker.Item key={motivo.id} label={motivo.descricao} value={motivo.id} />
+                  <Picker.Item 
+                    key={motivo.id} 
+                    label={motivo.descricao} 
+                    value={motivo.id} 
+                  />
                 ))}
               </Picker>
             </View>
             
             <TouchableOpacity 
-              style={[styles.button, styles.confirmButton]} 
+              style={[
+                styles.button, 
+                styles.confirmButton,
+                (!selectedMotivoId || isUpdatingStatus) && styles.buttonDisabled
+              ]} 
               onPress={handleUpdateStatus}
               disabled={isUpdatingStatus || !selectedMotivoId}
             >
@@ -143,7 +189,7 @@ const OrdemUpdateStatusScreen = () => {
 
         <TouchableOpacity 
           style={[styles.button, styles.cancelButton]} 
-          onPress={() => router.back()}
+          onPress={handleCancel}
           disabled={isUpdatingStatus}
         >
           <Text style={styles.buttonText}>Cancelar</Text>
@@ -178,6 +224,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.white,
+    textAlign: 'center',
   },
   content: {
     flex: 1,
@@ -185,7 +232,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: COLORS.text?.primary || '#333',
     marginBottom: 10,
   },
@@ -195,10 +242,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 20,
     backgroundColor: COLORS.white,
+    overflow: 'hidden',
   },
   picker: {
     height: 50,
     width: '100%',
+    color: COLORS.text?.primary || '#333',
   },
   button: {
     paddingVertical: 15,
@@ -211,6 +260,9 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     backgroundColor: COLORS.gray || '#9E9E9E',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: COLORS.white,

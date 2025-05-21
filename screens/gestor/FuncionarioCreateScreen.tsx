@@ -1,36 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { COLORS } from '@/constants/colors'; // Adjust path if needed
-import { useFuncionarioControllerCreate } from '@/api/generated'; // Adjust path if needed
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
+import { useFuncionarioControllerCreate } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 
 const FuncionarioCreateScreen = () => {
   const router = useRouter();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
   // State for form fields
   const [code, setCode] = useState('');
   const [nome, setNome] = useState('');
   const [cargo, setCargo] = useState('');
   const [salario, setSalario] = useState('');
+  const [password, setPassword] = useState('');
 
   // Check if user is a logged-in gestor
   useEffect(() => {
     const checkUserRole = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
-        const userRole = await AsyncStorage.getItem('userRole');
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
 
         if (!token || userRole !== 'gestor') {
-          router.replace('/(login)/login');
+          setInitialCheckDone(true);
+          setTimeout(() => router.replace('/(login)/login'), 0);
+          return;
         }
       } catch (error) {
         console.error('Failed to check user role from storage:', error);
         Alert.alert('Erro', 'Falha ao verificar permissões. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        setInitialCheckDone(true);
+        setTimeout(() => router.replace('/(login)/login'), 0);
       } finally {
         setIsLoadingUserCheck(false);
+        setInitialCheckDone(true);
       }
     };
 
@@ -42,46 +49,56 @@ const FuncionarioCreateScreen = () => {
     mutation: {
       onSuccess: () => {
         Alert.alert('Sucesso', 'Funcionário criado com sucesso.', [
-          { text: 'OK', onPress: () => router.back() } // Go back after creation
+          { text: 'OK', onPress: () => router.back() }
         ]);
       },
       onError: (error) => {
         console.error('Error creating employee:', error);
-        // Check for specific error messages from API if available
         const errorMessage = error.response?.data?.message || 'Não foi possível criar o funcionário. Verifique os dados e tente novamente.';
         Alert.alert('Erro', errorMessage);
       }
     }
   });
 
-  // Handle form submission
   const handleSubmit = () => {
     // Validate required fields
-    if (!code || !nome || !cargo || !salario) {
-      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos.');
+    if (!code || !nome || !cargo || !salario || !password) {
+      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos, incluindo a senha.');
+      return;
+    }
+  
+    // Validate salary (must be a positive number)
+    const salarioNum = parseFloat(salario);
+    if (isNaN(salarioNum)){
+      Alert.alert('Salário Inválido', 'O salário deve ser um número válido.');
       return;
     }
 
-    // Validate salary (must be a positive number)
-    const salarioNum = parseFloat(salario);
-    if (isNaN(salarioNum) || salarioNum < 0) {
+    if (salarioNum < 0) {
       Alert.alert('Salário Inválido', 'O salário deve ser um número positivo.');
       return;
     }
-
+  
+    // Validate password complexity
+    if (password.length < 6) {
+      Alert.alert('Senha Inválida', 'A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+  
     // Prepare data for API
     const funcionarioData = {
       code,
       nome,
       cargo,
-      salario: salarioNum
+      salario: salarioNum,
+      password
     };
-
+  
     // Call the mutation
     createFuncionario({ data: funcionarioData });
   };
 
-  if (isLoadingUserCheck) {
+  if (!initialCheckDone || isLoadingUserCheck) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -95,7 +112,7 @@ const FuncionarioCreateScreen = () => {
         <Text style={styles.headerTitle}>Criar Novo Funcionário</Text>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>Dados do Funcionário</Text>
           
@@ -106,6 +123,7 @@ const FuncionarioCreateScreen = () => {
             onChangeText={setCode}
             placeholder="Ex: FUNC001"
             autoCapitalize="characters"
+            maxLength={20}
           />
           
           <Text style={styles.label}>Nome Completo</Text>
@@ -114,6 +132,7 @@ const FuncionarioCreateScreen = () => {
             value={nome}
             onChangeText={setNome}
             placeholder="Nome do funcionário"
+            maxLength={100}
           />
           
           <Text style={styles.label}>Cargo</Text>
@@ -122,19 +141,38 @@ const FuncionarioCreateScreen = () => {
             value={cargo}
             onChangeText={setCargo}
             placeholder="Cargo do funcionário"
+            maxLength={50}
           />
           
           <Text style={styles.label}>Salário (R$)</Text>
           <TextInput
             style={styles.input}
             value={salario}
-            onChangeText={setSalario}
+            onChangeText={(text) => {
+              // Allow only numbers and decimal point
+              const cleanedText = text.replace(/[^0-9.]/g, '');
+              // Ensure only one decimal point
+              const parts = cleanedText.split('.');
+              if (parts.length <= 2) {
+                setSalario(cleanedText);
+              }
+            }}
             placeholder="Ex: 2500.00"
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
+          />
+
+          <Text style={styles.label}>Senha</Text>
+          <TextInput
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Senha de acesso inicial"
+            secureTextEntry
+            maxLength={20}
           />
           
-          <TouchableOpacity 
-            style={styles.submitButton}
+          <TouchableOpacity
+            style={[styles.submitButton, isCreating && styles.disabledButton]}
             onPress={handleSubmit}
             disabled={isCreating}
           >
@@ -146,7 +184,7 @@ const FuncionarioCreateScreen = () => {
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.cancelButton}
+            style={[styles.cancelButton, isCreating && styles.disabledButton]}
             onPress={() => router.back()}
             disabled={isCreating}
           >
@@ -242,7 +280,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  disabledButton: {
+    opacity: 0.6,
+  },
 });
 
 export default FuncionarioCreateScreen;
-

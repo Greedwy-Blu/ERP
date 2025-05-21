@@ -1,69 +1,86 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TouchableOpacity, TextInput } from 'react-native';
-import { COLORS } from '@/constants/colors'; // Ajuste o caminho conforme necessário
-import { useProdutoControllerFindOne, useProdutoControllerUpdate, useProdutoControllerRemove } from '@/api/generated'; // Ajuste o caminho conforme necessário
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
+import { useProductsControllerFindOne as useProdutoControllerFindOne, useProductsControllerUpdate as useProdutoControllerUpdate, useProductsControllerRemove } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 
 const ProdutoDetailScreen = () => {
   const router = useRouter();
   const { produtoId } = useLocalSearchParams();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   // Estados para campos editáveis
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [unitPrice, setUnitPrice] = useState('');
 
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
   // Verificar se o usuário é um gestor logado
   useEffect(() => {
     const checkUserRole = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
-        const userRole = await AsyncStorage.getItem('userRole');
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
 
-        if (!token || userRole !== 'gestor') {
-          router.replace('/(login)/login');
+        if (!token || userRole !== 'gestao') {
+          if (isMounted) {
+            router.replace('/(login)/login');
+          }
         }
       } catch (error) {
         console.error('Falha ao verificar papel do usuário no armazenamento:', error);
         Alert.alert('Erro', 'Falha ao verificar permissões. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        if (isMounted) {
+          router.replace('/(login)/login');
+        }
       } finally {
         setIsLoadingUserCheck(false);
       }
     };
 
     checkUserRole();
-  }, [router]);
+  }, [router, isMounted]);
 
   // Buscar detalhes do produto usando o hook gerado pelo Orval
-  const { data: produtoResponse, isLoading: isLoadingProduto, error: produtoError, refetch } = useProdutoControllerFindOne(
+  const { 
+    data: produtoResponse, 
+    isLoading: isLoadingProduto, 
+    error: produtoError, 
+    refetch 
+  } = useProdutoControllerFindOne(
     Number(produtoId),
     {
       query: {
+        queryKey: ['produto', produtoId],
         enabled: !isLoadingUserCheck && !!produtoId,
-        onSuccess: (data) => {
-          // Preencher estados quando os dados forem carregados
-          if (data?.data) {
-            setName(data.data.name || '');
-            setDescription(data.data.description || '');
-            setUnitPrice(data.data.unitPrice?.toString() || '');
-          }
-        }
       }
     }
   );
 
   const produto = produtoResponse?.data;
 
+  // Atualizar estados quando os dados do produto forem carregados
+  useEffect(() => {
+    if (produto) {
+      setName(produto.name || '');
+      setDescription(produto.description || '');
+      setUnitPrice(produto.unitPrice?.toString() || '');
+    }
+  }, [produto]);
+
   // Hook para atualizar produto
   const { mutate: updateProduto, isLoading: isUpdating } = useProdutoControllerUpdate({
     mutation: {
       onSuccess: () => {
         Alert.alert('Sucesso', 'Produto atualizado com sucesso.');
-        setIsEditing(false);
         refetch(); // Recarregar dados para mostrar informações atualizadas
       },
       onError: (error) => {
@@ -74,7 +91,7 @@ const ProdutoDetailScreen = () => {
   });
 
   // Hook para remover produto
-  const { mutate: removeProduto, isLoading: isRemoving } = useProdutoControllerRemove({
+  const { mutate: removeProduto, isLoading: isRemoving } = useProductsControllerRemove({
     mutation: {
       onSuccess: () => {
         Alert.alert('Sucesso', 'Produto removido com sucesso.', [
@@ -106,8 +123,7 @@ const ProdutoDetailScreen = () => {
       id: Number(produtoId),
       data: {
         name,
-        description,
-        unitPrice: unitPriceNum
+        description
       }
     });
   };
@@ -139,14 +155,13 @@ const ProdutoDetailScreen = () => {
   }, [produtoError]);
 
   // Recarregar dados quando a tela receber foco
-  useEffect(() => {
-    const unsubscribe = router.addListener('focus', () => {
+  useFocusEffect(
+    React.useCallback(() => {
       if (!isLoadingUserCheck && produtoId) {
         refetch();
       }
-    });
-    return unsubscribe;
-  }, [router, refetch, isLoadingUserCheck, produtoId]);
+    }, [isLoadingUserCheck, produtoId, refetch])
+  );
 
   if (isLoadingUserCheck || isLoadingProduto) {
     return (
@@ -233,7 +248,6 @@ const ProdutoDetailScreen = () => {
             )}
           </View>
 
-          {/* Adicionar outros campos não editáveis, se necessário */}
           <View style={styles.detailRow}>
             <Text style={styles.label}>Criado em:</Text>
             <Text style={styles.value}>{new Date(produto.createdAt).toLocaleDateString('pt-BR')}</Text>

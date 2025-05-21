@@ -1,105 +1,127 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { COLORS } from '@/constants/colors';
-import { useOrdersControllerCreateEtapa, useOrdersControllerAtualizarStatus, useOrdersControllerAddHistorico } from '@/api/generated'; // Ajustado para usar hooks relevantes
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
+import { useOrdersControllerCreateEtapa, useOrdersControllerAtualizarStatus, useOrdersControllerCreateHistoricoProducao } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 const OrdemFillScreen = () => {
   const router = useRouter();
-  const { orderId, action, etapaId } = useLocalSearchParams(); // action: 'add_etapa', 'interrupt'
+  const { orderId, action, etapaId } = useLocalSearchParams();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
   const [funcionarioId, setFuncionarioId] = useState<number | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   // Estados para formulário
-  const [nomeEtapa, setNomeEtapa] = useState(''); // Para 'add_etapa'
-  const [motivoInterrupcao, setMotivoInterrupcao] = useState(''); // Para 'interrupt'
+  const [nomeEtapa, setNomeEtapa] = useState('');
+  const [motivoInterrupcao, setMotivoInterrupcao] = useState('');
   const [observacoes, setObservacoes] = useState('');
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   // Verificar autenticação e buscar ID do funcionário
   useEffect(() => {
     const checkAuthAndFetchId = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
-        const storedFuncionarioId = await AsyncStorage.getItem('userId'); // Assumindo que userId é o ID do funcionário
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
+        const storedFuncionarioId = await AsyncStorage.getItem('user_id');
 
-        if (!token || !storedFuncionarioId) {
-          router.replace('/(login)/login');
+        if (!token || userRole !== 'funcionario' || !storedFuncionarioId) {
+          if (isMounted) {
+            setTimeout(() => {
+              router.replace('/(login)/login');
+            }, 0);
+          }
           return;
         }
         setFuncionarioId(parseInt(storedFuncionarioId, 10));
       } catch (error) {
         console.error('Falha ao verificar autenticação ou buscar ID:', error);
         Alert.alert('Erro', 'Falha ao carregar dados. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        if (isMounted) {
+          setTimeout(() => {
+            router.replace('/(login)/login');
+          }, 0);
+        }
       } finally {
         setIsLoadingUserCheck(false);
       }
     };
     checkAuthAndFetchId();
-  }, [router]);
+  }, [router, isMounted]);
 
   // Hook para criar etapa
   const { mutate: criarEtapa, isLoading: isCreatingEtapa } = useOrdersControllerCreateEtapa({
     mutation: {
       onSuccess: () => {
         Alert.alert('Sucesso', 'Nova etapa criada com sucesso.', [
-          { text: 'OK', onPress: () => router.back() }
+          { text: 'OK', onPress: () => {
+            if (isMounted) router.back();
+          }}
         ]);
       },
       onError: (error) => {
         console.error('Erro ao criar etapa:', error);
-        Alert.alert('Erro', 'Não foi possível criar a nova etapa.');
+        const errorMessage = error.response?.data?.message || 'Não foi possível criar a nova etapa.';
+        Alert.alert('Erro', errorMessage);
       }
     }
   });
 
-  // Hook para atualizar status (usado para interrupção)
+  // Hook para atualizar status
   const { mutate: atualizarStatus, isLoading: isUpdatingStatus } = useOrdersControllerAtualizarStatus({
     mutation: {
       onSuccess: () => {
-        // Após atualizar status, adicionar histórico
-        if (funcionarioId && motivoInterrupcao) {
+        if (funcionarioId && motivoInterrupcao && isMounted) {
           addHistorico({ 
             data: { 
-              ordemId: Number(orderId),
+              pedidoId: Number(orderId),
               funcionarioId: funcionarioId,
-              tipo: 'status_change',
-              statusAnterior: 'em_andamento', // Assumindo que estava em andamento antes de interromper
-              statusNovo: 'interrompido',
-              motivoInterrupcaoId: Number(motivoInterrupcao), // Assumindo que motivoInterrupcao é o ID
+              acao: 'status_change',
+              motivoInterrupcaoId: Number(motivoInterrupcao),
               observacoes: observacoes || undefined
             }
           });
         } else {
-           Alert.alert('Sucesso', 'Status da ordem atualizado para interrompido.', [
-            { text: 'OK', onPress: () => router.back() }
+          Alert.alert('Sucesso', 'Status da ordem atualizado para interrompido.', [
+            { text: 'OK', onPress: () => {
+              if (isMounted) router.back();
+            }}
           ]);
         }
       },
       onError: (error) => {
         console.error('Erro ao atualizar status:', error);
-        Alert.alert('Erro', 'Não foi possível interromper a ordem.');
+        const errorMessage = error.response?.data?.message || 'Não foi possível interromper a ordem.';
+        Alert.alert('Erro', errorMessage);
       }
     }
   });
   
-  // Hook para adicionar histórico (usado após interrupção)
-  const { mutate: addHistorico, isLoading: isAddingHistorico } = useOrdersControllerAddHistorico({
-      mutation: {
-          onSuccess: () => {
-              Alert.alert('Sucesso', 'Status da ordem atualizado e histórico registrado.', [
-                  { text: 'OK', onPress: () => router.back() }
-              ]);
-          },
-          onError: (error) => {
-              console.error('Erro ao adicionar histórico após interrupção:', error);
-              // Informar sucesso parcial (status atualizado, mas histórico falhou)
-              Alert.alert('Sucesso Parcial', 'Status da ordem atualizado, mas houve um erro ao registrar o histórico.', [
-                  { text: 'OK', onPress: () => router.back() }
-              ]);
-          }
+  // Hook para adicionar histórico
+  const { mutate: addHistorico, isLoading: isAddingHistorico } = useOrdersControllerCreateHistoricoProducao({
+    mutation: {
+      onSuccess: () => {
+        Alert.alert('Sucesso', 'Status da ordem atualizado e histórico registrado.', [
+          { text: 'OK', onPress: () => {
+            if (isMounted) router.back();
+          }}
+        ]);
+      },
+      onError: (error) => {
+        console.error('Erro ao adicionar histórico após interrupção:', error);
+        Alert.alert('Sucesso Parcial', 'Status da ordem atualizado, mas houve um erro ao registrar o histórico.', [
+          { text: 'OK', onPress: () => {
+            if (isMounted) router.back();
+          }}
+        ]);
       }
+    }
   });
 
   const getTitle = () => {
@@ -111,9 +133,9 @@ const OrdemFillScreen = () => {
   };
 
   const handleSubmit = () => {
-    if (!orderId || !funcionarioId) {
-        Alert.alert('Erro', 'Dados da ordem ou usuário não encontrados.');
-        return;
+    if (!isMounted || !orderId || !funcionarioId) {
+      Alert.alert('Erro', 'Dados da ordem ou usuário não encontrados.');
+      return;
     }
 
     switch (action) {
@@ -126,28 +148,31 @@ const OrdemFillScreen = () => {
           id: Number(orderId), 
           data: { 
             nome: nomeEtapa,
-            funcionarioId: funcionarioId, // Associar funcionário que criou
-            // Outros campos da etapa, se necessário
+            funcionarioCode: funcionarioId.toString(),
           } 
         });
         break;
       case 'interrupt':
         if (!motivoInterrupcao) {
-          Alert.alert('Erro', 'Selecione o motivo da interrupção.'); // Ajustar se for input de texto
+          Alert.alert('Erro', 'Selecione o motivo da interrupção.');
           return;
         }
         atualizarStatus({
           id: Number(orderId),
           data: {
             status: 'interrompido',
-            // Não enviar motivo aqui, será registrado no histórico
           }
         });
         break;
       default:
-        console.log('Ação desconhecida:', action);
         Alert.alert('Erro', 'Ação não reconhecida.');
         break;
+    }
+  };
+
+  const handleCancel = () => {
+    if (isMounted) {
+      router.back();
     }
   };
 
@@ -163,65 +188,72 @@ const OrdemFillScreen = () => {
 
   return (
     <View style={styles.container}>
-       <View style={styles.header}>
+      <View style={styles.header}>
         <Text style={styles.headerTitle}>{getTitle()}</Text>
       </View>
-      <ScrollView style={styles.content}>
+      
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.formCard}>
-            <Text style={styles.ordemInfo}>Ordem: OP-{orderId}</Text>
+          <Text style={styles.ordemInfo}>Ordem: OP-{orderId}</Text>
 
-            {action === 'add_etapa' && (
-                <>
-                <Text style={styles.label}>Nome da Nova Etapa:</Text>
-                <TextInput
-                    style={styles.input}
-                    value={nomeEtapa}
-                    onChangeText={setNomeEtapa}
-                    placeholder="Ex: Montagem Final"
-                />
-                </>
+          {action === 'add_etapa' && (
+            <>
+              <Text style={styles.label}>Nome da Nova Etapa:</Text>
+              <TextInput
+                style={styles.input}
+                value={nomeEtapa}
+                onChangeText={setNomeEtapa}
+                placeholder="Ex: Montagem Final"
+                editable={!isLoading}
+              />
+            </>
+          )}
+
+          {action === 'interrupt' && (
+            <>
+              <Text style={styles.label}>Motivo da Interrupção (ID):</Text>
+              <TextInput
+                style={styles.input}
+                value={motivoInterrupcao}
+                onChangeText={setMotivoInterrupcao}
+                keyboardType="numeric"
+                placeholder="Informe o ID do motivo"
+                editable={!isLoading}
+              />
+              <Text style={styles.label}>Observações (Opcional):</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={observacoes}
+                onChangeText={setObservacoes}
+                multiline
+                placeholder="Descreva o motivo ou observação..."
+                editable={!isLoading}
+              />
+            </>
+          )}
+
+          <TouchableOpacity
+            style={[styles.button, isLoading && styles.buttonDisabled]}
+            onPress={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <Text style={styles.buttonText}>Confirmar</Text>
             )}
-
-            {action === 'interrupt' && (
-                <>
-                {/* TODO: Substituir por Picker se os motivos vierem da API */}
-                <Text style={styles.label}>Motivo da Interrupção (ID):</Text>
-                <TextInput
-                    style={styles.input}
-                    value={motivoInterrupcao}
-                    onChangeText={setMotivoInterrupcao}
-                    keyboardType="numeric"
-                    placeholder="Informe o ID do motivo"
-                />
-                <Text style={styles.label}>Observações (Opcional):</Text>
-                <TextInput
-                    style={[styles.input, styles.textArea]}
-                    value={observacoes}
-                    onChangeText={setObservacoes}
-                    multiline
-                    placeholder="Descreva o motivo ou observação..."
-                />
-                </>
-            )}
-
-            <TouchableOpacity
-                style={[styles.button, isLoading && styles.buttonDisabled]}
-                onPress={handleSubmit}
-                disabled={isLoading}
-            >
-                {isLoading ? (
-                <ActivityIndicator color={COLORS.white} />
-                ) : (
-                <Text style={styles.buttonText}>Confirmar</Text>
-                )}
-            </TouchableOpacity>
-             <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => router.back()}
-                disabled={isLoading}
-            >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-            </TouchableOpacity>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.cancelButton, isLoading && styles.buttonDisabled]}
+            onPress={handleCancel}
+            disabled={isLoading}
+          >
+            <Text style={styles.cancelButtonText}>Cancelar</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -233,7 +265,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-   centered: {
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -248,10 +280,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.white,
+    textAlign: 'center',
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 16,
+    paddingBottom: 20,
   },
   formCard: {
     backgroundColor: COLORS.white,
@@ -273,7 +309,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: COLORS.text?.primary || '#333',
     marginTop: 15,
     marginBottom: 5,
@@ -285,6 +321,7 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     marginBottom: 16,
+    backgroundColor: COLORS.white,
   },
   textArea: {
     height: 100,
@@ -299,19 +336,20 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   buttonDisabled: {
-    backgroundColor: COLORS.gray || '#ccc',
+    opacity: 0.6,
   },
   buttonText: {
     color: COLORS.white,
     fontSize: 16,
     fontWeight: 'bold',
   },
-   cancelButton: {
+  cancelButton: {
     borderWidth: 1,
     borderColor: COLORS.primary,
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
+    backgroundColor: COLORS.white,
   },
   cancelButtonText: {
     color: COLORS.primary,

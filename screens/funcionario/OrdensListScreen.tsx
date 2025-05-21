@@ -1,24 +1,36 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { COLORS } from '@/constants/colors';
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
 import { useOrdersControllerFindAll } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 const OrdensListScreen = () => {
   const router = useRouter();
   const [userId, setUserId] = useState<number | null>(null);
   const [isLoadingUserId, setIsLoadingUserId] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   // Buscar ID do usuário do armazenamento
   useEffect(() => {
     const fetchUserId = async () => {
       try {
-        const storedUserId = await AsyncStorage.getItem('userId');
-        const token = await AsyncStorage.getItem('accessToken');
+        const storedUserId = await AsyncStorage.getItem('user_id');
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
         
-        if (!token) {
-          router.replace('/(login)/login');
+        if (!token || userRole !== 'funcionario') {
+          if (isMounted) {
+            setTimeout(() => {
+              router.replace('/(login)/login');
+            }, 0);
+          }
           return;
         }
         
@@ -27,36 +39,57 @@ const OrdensListScreen = () => {
         } else {
           console.error('ID do usuário não encontrado no armazenamento.');
           Alert.alert('Erro', 'ID do usuário não encontrado. Por favor, faça login novamente.');
-          router.replace('/(login)/login');
+          if (isMounted) {
+            setTimeout(() => {
+              router.replace('/(login)/login');
+            }, 0);
+          }
         }
       } catch (error) {
         console.error('Falha ao buscar ID do usuário do armazenamento:', error);
         Alert.alert('Erro', 'Falha ao carregar dados do usuário. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        if (isMounted) {
+          setTimeout(() => {
+            router.replace('/(login)/login');
+          }, 0);
+        }
       } finally {
         setIsLoadingUserId(false);
       }
     };
 
     fetchUserId();
-  }, [router]);
+  }, [router, isMounted]);
 
-  // Buscar todas as ordens usando o hook gerado pelo Orval
-  const { data: ordensResponse, isLoading: isLoadingOrdens, error: ordensError } = useOrdersControllerFindAll({
+  // Buscar todas as ordens
+  const { 
+    data: ordensResponse, 
+    isLoading: isLoadingOrdens, 
+    error: ordensError,
+    refetch 
+  } = useOrdersControllerFindAll({
     query: {
-      enabled: !!userId, // Só executar a consulta quando o userId estiver disponível
+      queryKey: ['orders', userId],
+      enabled: !!userId && isMounted,
     },
-    axios: {
-      params: { employeeId: userId } // Passar employeeId como parâmetro de consulta
+    request: {
+      params: { employeeId: userId }
     }
   });
 
-  // Assumindo que a API retorna { data: Order[] }
   const ordens = ordensResponse?.data || [];
 
-  // Função para obter a cor do status
-  const getStatusColor = (status) => {
-    switch (status) {
+  // Recarregar quando a tela receber foco
+  useFocusEffect(
+    useCallback(() => {
+      if (isMounted && userId) {
+        refetch();
+      }
+    }, [isMounted, userId, refetch])
+  );
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
       case 'aberto': return COLORS.accent;
       case 'em_andamento': return COLORS.secondary;
       case 'interrompido': return COLORS.warning;
@@ -65,11 +98,25 @@ const OrdensListScreen = () => {
     }
   };
 
-  // Função para formatar a data
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     if (!dateString) return 'Data não disponível';
     const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return date.toLocaleDateString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleNavigateToDetail = (orderId: number) => {
+    if (isMounted) {
+      router.push({ 
+        pathname: '/(app_main)/funcionario/OrdemDetailScreen', 
+        params: { orderId } 
+      });
+    }
   };
 
   // Lidar com erros da API
@@ -103,12 +150,17 @@ const OrdensListScreen = () => {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.orderCard}
-              onPress={() => router.push({ pathname: '/(home)/OrdemDetailScreen', params: { orderId: item.id }})}
+              onPress={() => handleNavigateToDetail(item.id)}
             >
               <View style={styles.orderHeader}>
                 <Text style={styles.orderTitle}>OP-{item.id}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-                  <Text style={styles.statusText}>{item.status}</Text>
+                <View style={[
+                  styles.statusBadge, 
+                  { backgroundColor: getStatusColor(item.status) }
+                ]}>
+                  <Text style={styles.statusText}>
+                    {item.status.replace('_', ' ')}
+                  </Text>
                 </View>
               </View>
               
@@ -165,9 +217,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.white,
+    textAlign: 'center',
   },
   listContent: {
     padding: 16,
+    paddingBottom: 20,
   },
   orderCard: {
     backgroundColor: COLORS.white,
@@ -195,11 +249,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
+    minWidth: 100,
+    alignItems: 'center',
   },
   statusText: {
     color: COLORS.white,
     fontSize: 12,
     fontWeight: 'bold',
+    textTransform: 'capitalize',
   },
   orderDetails: {
     marginTop: 8,
@@ -208,6 +265,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.text?.secondary || '#666',
     marginBottom: 4,
+    lineHeight: 20,
   },
   orderDetailLabel: {
     fontWeight: 'bold',

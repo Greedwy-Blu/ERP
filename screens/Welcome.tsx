@@ -106,7 +106,7 @@ const SolariumApp = () => {
             { damping: 10, stiffness: 250 },
             (finished) => {
               if (finished) {
-                runOnJS(router.push)('/carregamento');
+                runOnJS(router.replace)('/carregamento');
               }
             }
           );

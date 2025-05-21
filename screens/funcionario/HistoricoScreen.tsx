@@ -1,54 +1,73 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { COLORS } from '@/constants/colors';
-import { useOrdersControllerListHistoricoProducao } from '@/api/generated'; // Ajustar caminho se necessário
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
+import { useOrdersControllerListHistoricoProducao } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 
-// Nota: Este componente parece ter funcionalidade similar a HistoricoListScreen.tsx.
-// Foi atualizado conforme solicitado, mas pode ser redundante.
 const HistoricoScreen = () => {
   const router = useRouter();
-  // Tenta obter orderId dos parâmetros, mas não é obrigatório para buscar histórico geral
-  const { orderId } = useLocalSearchParams(); 
+  const { orderId } = useLocalSearchParams();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   // Verificar se o usuário está autenticado
   useEffect(() => {
     const checkUserAuth = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
-        if (!token) {
-          router.replace('/(login)/login');
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
+        
+        if (!token || userRole !== 'funcionario') {
+          if (isMounted) {
+            setTimeout(() => {
+              router.replace('/(login)/login');
+            }, 0);
+          }
           return;
         }
       } catch (error) {
         console.error('Falha ao verificar autenticação:', error);
         Alert.alert('Erro', 'Falha ao verificar autenticação. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        if (isMounted) {
+          setTimeout(() => {
+            router.replace('/(login)/login');
+          }, 0);
+        }
       } finally {
         setIsLoadingUserCheck(false);
       }
     };
     checkUserAuth();
-  }, [router]);
+  }, [router, isMounted]);
 
   // Usar o hook de query gerado pela API para buscar o histórico
-  // Passa orderId se disponível, senão busca histórico geral
-  const { data: historicoResponse, isLoading: isLoadingHistorico, error: historicoError, refetch } = useOrdersControllerListHistoricoProducao(
-    orderId ? Number(orderId) : undefined, 
+  const { 
+    data: historicoResponse, 
+    isLoading: isLoadingHistorico, 
+    error: historicoError, 
+    refetch 
+  } = useOrdersControllerListHistoricoProducao(
+    orderId ? Number(orderId) : 0,
     {
       query: {
-        enabled: !isLoadingUserCheck, // Só executar após checar usuário
-      }
+        queryKey: ['historicoProducao', orderId],
+        enabled: !isLoadingUserCheck && isMounted,
+      },
     }
   );
-  
-  // Extrair os itens de histórico da resposta da API
+    
   const historicoItems = historicoResponse?.data || [];
 
-  const getStatusColor = (status) => {
-    switch (status) {
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
       case 'finalizado': return COLORS.success;
       case 'em_andamento': return COLORS.secondary;
       case 'interrompido': return COLORS.warning;
@@ -57,8 +76,7 @@ const HistoricoScreen = () => {
     }
   };
 
-  // Função para formatar a data
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     if (!dateString) return 'Data não disponível';
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR', { 
@@ -78,22 +96,28 @@ const HistoricoScreen = () => {
     }
   }, [historicoError]);
 
-  // Recarregar dados quando a tela receber foco
-  useEffect(() => {
-    const unsubscribe = router.addListener('focus', () => {
-      if (!isLoadingUserCheck) {
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLoadingUserCheck && isMounted) {
         refetch();
       }
-    });
-    return unsubscribe;
-  }, [router, refetch, isLoadingUserCheck]);
+    }, [refetch, isLoadingUserCheck, isMounted])
+  );
+
+  const handleNavigateToOrder = (orderId: string) => {
+    if (isMounted) {
+      router.push({ 
+        pathname: '/(app_main)/funcionario/OrdemDetailScreen', 
+        params: { orderId } 
+      });
+    }
+  };
 
   const renderHistoricoItem = ({ item }) => (
     <TouchableOpacity 
       style={styles.historicoItem}
-      // Navegar para detalhes da ordem se o ID estiver disponível
-      onPress={() => item.ordem?.id && router.push({ pathname: '/(home)/OrdemDetailScreen', params: { orderId: item.ordem.id }})}
-      disabled={!item.ordem?.id} // Desabilitar clique se não houver ID da ordem
+      onPress={() => item.ordem?.id && handleNavigateToOrder(item.ordem.id)}
+      disabled={!item.ordem?.id}
     >
       <View style={styles.itemHeader}>
         <Text style={styles.orderNumber}>OP-{item.ordem?.id || 'N/A'}</Text>
@@ -122,16 +146,20 @@ const HistoricoScreen = () => {
           {item.statusAnterior && (
              <Text style={styles.description}>
                 <Text style={styles.label}>Status Anterior: </Text>
-                <Text style={{ color: getStatusColor(item.statusAnterior) }}>{item.statusAnterior}</Text>
+                <Text style={{ color: getStatusColor(item.statusAnterior) }}>
+                  {item.statusAnterior.replace('_', ' ')}
+                </Text>
              </Text>
           )}
           {item.statusNovo && (
              <Text style={styles.description}>
                 <Text style={styles.label}>Novo Status: </Text>
-                <Text style={{ color: getStatusColor(item.statusNovo) }}>{item.statusNovo}</Text>
+                <Text style={{ color: getStatusColor(item.statusNovo) }}>
+                  {item.statusNovo.replace('_', ' ')}
+                </Text>
              </Text>
           )}
-           {item.motivoInterrupcao && (
+          {item.motivoInterrupcao && (
               <Text style={styles.description}>
                 <Text style={styles.label}>Motivo: </Text>
                 {item.motivoInterrupcao.descricao}
@@ -170,6 +198,11 @@ const HistoricoScreen = () => {
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderHistoricoItem}
           contentContainerStyle={styles.listContainer}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Nenhum histórico encontrado.</Text>
+            </View>
+          }
         />
       ) : (
         <View style={styles.emptyContainer}>
@@ -211,9 +244,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.white,
+    textAlign: 'center',
   },
   listContainer: {
     padding: 16,
+    paddingBottom: 20,
   },
   historicoItem: {
     backgroundColor: COLORS.white,
@@ -249,11 +284,12 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     color: COLORS.text?.secondary || '#666',
-    marginBottom: 4,
+    marginBottom: 6,
+    lineHeight: 20,
   },
   label: {
-      fontWeight: 'bold',
-      color: COLORS.text?.primary || '#333',
+    fontWeight: 'bold',
+    color: COLORS.text?.primary || '#333',
   },
   emptyContainer: {
     flex: 1,
@@ -269,4 +305,3 @@ const styles = StyleSheet.create({
 });
 
 export default HistoricoScreen;
-

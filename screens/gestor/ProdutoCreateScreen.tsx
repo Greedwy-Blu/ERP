@@ -1,90 +1,115 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { COLORS } from '@/constants/colors'; // Ajuste o caminho conforme necessário
-import { useProdutoControllerCreate } from '@/api/generated'; // Ajuste o caminho conforme necessário
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
+import { useProductsControllerCreate } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 
 const ProdutoCreateScreen = () => {
   const router = useRouter();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
-  // Estados para os campos do formulário
+  // Form states
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [unitPrice, setUnitPrice] = useState('');
+  const [price, setPrice] = useState('');
+  const [quantity, setQuantity] = useState('');
 
-  // Verificar se o usuário é um gestor logado
+  // Check user authentication and role
   useEffect(() => {
     const checkUserRole = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
-        const userRole = await AsyncStorage.getItem('userRole');
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
 
-        if (!token || userRole !== 'gestor') {
-          router.replace('/(login)/login');
+        if (!token || userRole !== 'gestao') {
+          setInitialCheckDone(true);
+          setTimeout(() => router.replace('/(login)/login'), 0);
+          return;
         }
       } catch (error) {
-        console.error('Falha ao verificar papel do usuário no armazenamento:', error);
+        console.error('Failed to check user role:', error);
         Alert.alert('Erro', 'Falha ao verificar permissões. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        setInitialCheckDone(true);
+        setTimeout(() => router.replace('/(login)/login'), 0);
       } finally {
         setIsLoadingUserCheck(false);
+        setInitialCheckDone(true);
       }
     };
 
     checkUserRole();
   }, [router]);
 
-  // Hook para criar um novo produto
-  const { mutate: createProduto, isLoading: isCreating } = useProdutoControllerCreate({
+  // Create product mutation
+  const { mutate: createProduto, isLoading: isCreating } = useProductsControllerCreate({
     mutation: {
       onSuccess: () => {
         Alert.alert('Sucesso', 'Produto criado com sucesso.', [
-          { text: 'OK', onPress: () => router.back() } // Voltar após a criação
+          { text: 'OK', onPress: () => router.push('/(home)/gestor/produtoslistscreen') }
         ]);
       },
       onError: (error) => {
-        console.error('Erro ao criar produto:', error);
-        // Verificar mensagens de erro específicas da API, se disponíveis
+        console.error('Error creating product:', error);
         const errorMessage = error.response?.data?.message || 'Não foi possível criar o produto. Verifique os dados e tente novamente.';
         Alert.alert('Erro', errorMessage);
       }
     }
   });
 
-  // Função para validar e enviar o formulário
   const handleSubmit = () => {
-    // Validar campos obrigatórios
-    if (!code || !name) {
-      Alert.alert('Campos Obrigatórios', 'Por favor, preencha pelo menos o código e o nome do produto.');
+    // Validate required fields
+    if (!code || !name || !price || !quantity) {
+      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos: código, nome, preço e quantidade.');
       return;
     }
 
-    // Validar preço unitário (deve ser um número positivo)
-    let unitPriceNum = null;
-    if (unitPrice) {
-      unitPriceNum = parseFloat(unitPrice);
-      if (isNaN(unitPriceNum) || unitPriceNum < 0) {
-        Alert.alert('Preço Inválido', 'O preço unitário deve ser um número positivo.');
-        return;
-      }
+    // Validate price format
+    const priceNum = parseFloat(price.replace(',', '.'));
+    if (isNaN(priceNum) || priceNum < 0) {
+      Alert.alert('Preço Inválido', 'O preço deve ser um número positivo.');
+      return;
     }
 
-    // Preparar dados para a API
+    // Validate quantity format
+    const quantityNum = parseInt(quantity, 10);
+    if (isNaN(quantityNum) || quantityNum <= 0 || !Number.isInteger(quantityNum)) {
+      Alert.alert('Quantidade Inválida', 'A quantidade deve ser um número inteiro positivo.');
+      return;
+    }
+
+    // Prepare data for API
     const produtoData = {
       code,
       name,
       description: description || undefined,
-      unitPrice: unitPriceNum || undefined
+      price: priceNum,
+      quantity: quantityNum
     };
 
-    // Chamar a mutação
     createProduto({ data: produtoData });
   };
 
-  if (isLoadingUserCheck) {
+  const handlePriceChange = (text) => {
+    // Allow only numbers and one decimal point or comma
+    const cleanedText = text.replace(/[^0-9,.]/g, '');
+    // Ensure only one decimal separator
+    const parts = cleanedText.split(/[,.]/);
+    if (parts.length <= 2) {
+      setPrice(cleanedText);
+    }
+  };
+
+  const handleQuantityChange = (text) => {
+    // Allow only numbers
+    const cleanedText = text.replace(/[^0-9]/g, '');
+    setQuantity(cleanedText);
+  };
+
+  if (!initialCheckDone || isLoadingUserCheck) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -98,27 +123,29 @@ const ProdutoCreateScreen = () => {
         <Text style={styles.headerTitle}>Criar Novo Produto</Text>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>Dados do Produto</Text>
-          
-          <Text style={styles.label}>Código</Text>
+
+          <Text style={styles.label}>Código *</Text>
           <TextInput
             style={styles.input}
             value={code}
             onChangeText={setCode}
             placeholder="Ex: PROD001"
             autoCapitalize="characters"
+            maxLength={20}
           />
-          
-          <Text style={styles.label}>Nome</Text>
+
+          <Text style={styles.label}>Nome *</Text>
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={setName}
             placeholder="Nome do produto"
+            maxLength={100}
           />
-          
+
           <Text style={styles.label}>Descrição</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
@@ -127,19 +154,30 @@ const ProdutoCreateScreen = () => {
             placeholder="Descrição detalhada do produto"
             multiline
             numberOfLines={4}
+            maxLength={500}
           />
-          
-          <Text style={styles.label}>Preço Unitário (R$)</Text>
+
+          <Text style={styles.label}>Preço (R$) *</Text>
           <TextInput
             style={styles.input}
-            value={unitPrice}
-            onChangeText={setUnitPrice}
-            placeholder="Ex: 99.90"
-            keyboardType="numeric"
+            value={price}
+            onChangeText={handlePriceChange}
+            placeholder="Ex: 99,90"
+            keyboardType="decimal-pad"
           />
-          
-          <TouchableOpacity 
-            style={styles.submitButton}
+
+          <Text style={styles.label}>Quantidade *</Text>
+          <TextInput
+            style={styles.input}
+            value={quantity}
+            onChangeText={handleQuantityChange}
+            placeholder="Quantidade em estoque"
+            keyboardType="numeric"
+            maxLength={6}
+          />
+
+          <TouchableOpacity
+            style={[styles.submitButton, isCreating && styles.disabledButton]}
             onPress={handleSubmit}
             disabled={isCreating}
           >
@@ -149,9 +187,9 @@ const ProdutoCreateScreen = () => {
               <Text style={styles.submitButtonText}>Criar Produto</Text>
             )}
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.cancelButton}
+
+          <TouchableOpacity
+            style={[styles.cancelButton, isCreating && styles.disabledButton]}
             onPress={() => router.back()}
             disabled={isCreating}
           >
@@ -250,6 +288,9 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });
 

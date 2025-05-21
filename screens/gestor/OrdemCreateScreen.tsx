@@ -1,63 +1,78 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { COLORS } from '@/constants/colors';
-import { useOrdersControllerCreate, useProdutoControllerFindAll, useFuncionarioControllerFindAll } from '@/api/generated';
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
+import { useOrdersControllerCreate, useProductsControllerFindAll, useFuncionarioControllerFindAll } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 
 const OrdemCreateScreen = () => {
   const router = useRouter();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
   
-  // Estados para os campos do formulário
+  // Form fields
   const [productCode, setProductCode] = useState('');
   const [employeeCode, setEmployeeCode] = useState('');
   const [lotQuantity, setLotQuantity] = useState('');
   const [finalDestination, setFinalDestination] = useState('');
   
-  // Estados para listas de seleção
+  // Data lists
   const [produtos, setProdutos] = useState([]);
   const [funcionarios, setFuncionarios] = useState([]);
 
-  // Verificar se o usuário é um gestor logado
+  // Check user authentication and role
   useEffect(() => {
     const checkUserRole = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
-        const userRole = await AsyncStorage.getItem('userRole');
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
 
-        if (!token || userRole !== 'gestor') {
-          // Se não houver token ou o papel não for gestor, redirecionar para login
-          router.replace('/(login)/login');
+        if (!token || userRole !== 'gestao') {
+          setInitialCheckDone(true);
+          setTimeout(() => router.replace('/(login)/login'), 0);
+          return;
         }
       } catch (error) {
-        console.error('Falha ao verificar papel do usuário no armazenamento:', error);
+        console.error('Failed to check user role:', error);
         Alert.alert('Erro', 'Falha ao verificar permissões. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        setInitialCheckDone(true);
+        setTimeout(() => router.replace('/(login)/login'), 0);
       } finally {
         setIsLoadingUserCheck(false);
+        setInitialCheckDone(true);
       }
     };
 
     checkUserRole();
   }, [router]);
 
-  // Buscar produtos
-  const { data: produtosResponse, isLoading: isLoadingProdutos, error: produtosError } = useProdutoControllerFindAll({
+  // Fetch products
+  const { 
+    data: produtosResponse, 
+    isLoading: isLoadingProdutos, 
+    error: produtosError 
+  } = useProductsControllerFindAll({
     query: {
-      enabled: !isLoadingUserCheck, // Só executar a consulta após a verificação do usuário
+      queryKey: ['produtos'],
+      enabled: initialCheckDone,
     }
   });
 
-  // Buscar funcionários
-  const { data: funcionariosResponse, isLoading: isLoadingFuncionarios, error: funcionariosError } = useFuncionarioControllerFindAll({
+  // Fetch employees
+  const { 
+    data: funcionariosResponse, 
+    isLoading: isLoadingFuncionarios, 
+    error: funcionariosError 
+  } = useFuncionarioControllerFindAll({
     query: {
-      enabled: !isLoadingUserCheck, // Só executar a consulta após a verificação do usuário
+      queryKey: ['funcionarios'],
+      enabled: initialCheckDone,
     }
   });
 
-  // Atualizar listas quando os dados forem carregados
+  // Update lists when data is loaded
   useEffect(() => {
     if (produtosResponse?.data) {
       setProdutos(produtosResponse.data);
@@ -67,40 +82,45 @@ const OrdemCreateScreen = () => {
     }
   }, [produtosResponse, funcionariosResponse]);
 
-  // Hook para criar uma nova ordem
+  // Create order mutation
   const { mutate: criarOrdem, isLoading: isCreatingOrder } = useOrdersControllerCreate({
     mutation: {
       onSuccess: () => {
         Alert.alert('Sucesso', 'Ordem de serviço criada com sucesso.', [
           { 
             text: 'OK', 
-            onPress: () => router.push('/(home)/OrdensGestorListScreen') 
+            onPress: () => router.push('/(home)/gestor/ordensgestorlistscreen') 
           }
         ]);
       },
       onError: (error) => {
-        console.error('Erro ao criar ordem de serviço:', error);
-        Alert.alert('Erro', 'Não foi possível criar a ordem de serviço. Verifique os dados e tente novamente.');
+        console.error('Erro ao criar ordem:', error);
+        const errorMessage = error.response?.data?.message || 'Não foi possível criar a ordem. Verifique os dados.';
+        Alert.alert('Erro', errorMessage);
       }
     }
   });
 
-  // Função para validar e enviar o formulário
   const handleSubmit = () => {
-    // Validar campos obrigatórios
+    // Validate required fields
     if (!productCode || !employeeCode || !lotQuantity || !finalDestination) {
       Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos.');
       return;
     }
 
-    // Validar quantidade (deve ser um número positivo)
+    // Validate quantity
     const quantity = parseInt(lotQuantity, 10);
-    if (isNaN(quantity) || quantity <= 0) {
-      Alert.alert('Quantidade Inválida', 'A quantidade deve ser um número positivo.');
+    if (isNaN(quantity)) {
+      Alert.alert('Erro', 'A quantidade deve ser um número válido.');
+      return;
+    }
+    
+    if (quantity <= 0) {
+      Alert.alert('Erro', 'A quantidade deve ser maior que zero.');
       return;
     }
 
-    // Criar objeto com dados da ordem
+    // Create order data
     const orderData = {
       productCode,
       employeeCode,
@@ -108,23 +128,22 @@ const OrdemCreateScreen = () => {
       finalDestination
     };
 
-    // Enviar para a API
     criarOrdem({ data: orderData });
   };
 
-  // Lidar com erros da API
+  // Handle API errors
   useEffect(() => {
     if (produtosError) {
       console.error('Erro ao buscar produtos:', produtosError);
-      Alert.alert('Erro', 'Não foi possível carregar a lista de produtos.');
+      Alert.alert('Erro', 'Não foi possível carregar os produtos.');
     }
     if (funcionariosError) {
       console.error('Erro ao buscar funcionários:', funcionariosError);
-      Alert.alert('Erro', 'Não foi possível carregar a lista de funcionários.');
+      Alert.alert('Erro', 'Não foi possível carregar os funcionários.');
     }
   }, [produtosError, funcionariosError]);
 
-  if (isLoadingUserCheck || isLoadingProdutos || isLoadingFuncionarios) {
+  if (!initialCheckDone || isLoadingUserCheck || isLoadingProdutos || isLoadingFuncionarios) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -139,65 +158,73 @@ const OrdemCreateScreen = () => {
         <Text style={styles.headerTitle}>Criar Nova Ordem de Serviço</Text>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>Informações da Ordem</Text>
           
-          <Text style={styles.label}>Produto</Text>
+          <Text style={styles.label}>Produto *</Text>
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={productCode}
-              onValueChange={(itemValue) => setProductCode(itemValue)}
+              onValueChange={setProductCode}
               style={styles.picker}
+              dropdownIconColor={COLORS.primary}
             >
               <Picker.Item label="Selecione um produto" value="" />
               {produtos.map((produto) => (
                 <Picker.Item 
                   key={produto.id} 
-                  label={produto.name} 
+                  label={`${produto.name} (${produto.code})`} 
                   value={produto.code} 
                 />
               ))}
             </Picker>
           </View>
           
-          <Text style={styles.label}>Funcionário</Text>
+          <Text style={styles.label}>Funcionário *</Text>
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={employeeCode}
-              onValueChange={(itemValue) => setEmployeeCode(itemValue)}
+              onValueChange={setEmployeeCode}
               style={styles.picker}
+              dropdownIconColor={COLORS.primary}
             >
               <Picker.Item label="Selecione um funcionário" value="" />
               {funcionarios.map((funcionario) => (
                 <Picker.Item 
                   key={funcionario.id} 
-                  label={funcionario.nome} 
+                  label={`${funcionario.nome} (${funcionario.code})`} 
                   value={funcionario.code} 
                 />
               ))}
             </Picker>
           </View>
           
-          <Text style={styles.label}>Quantidade do Lote</Text>
+          <Text style={styles.label}>Quantidade do Lote *</Text>
           <TextInput
             style={styles.input}
             value={lotQuantity}
-            onChangeText={setLotQuantity}
+            onChangeText={(text) => {
+              // Allow only numbers
+              const cleanedText = text.replace(/[^0-9]/g, '');
+              setLotQuantity(cleanedText);
+            }}
             placeholder="Informe a quantidade"
             keyboardType="numeric"
+            maxLength={6}
           />
           
-          <Text style={styles.label}>Destino Final</Text>
+          <Text style={styles.label}>Destino Final *</Text>
           <TextInput
             style={styles.input}
             value={finalDestination}
             onChangeText={setFinalDestination}
             placeholder="Informe o destino final"
+            maxLength={100}
           />
           
           <TouchableOpacity 
-            style={styles.submitButton}
+            style={[styles.submitButton, isCreatingOrder && styles.disabledButton]}
             onPress={handleSubmit}
             disabled={isCreatingOrder}
           >
@@ -209,7 +236,7 @@ const OrdemCreateScreen = () => {
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.cancelButton}
+            style={[styles.cancelButton, isCreatingOrder && styles.disabledButton]}
             onPress={() => router.back()}
             disabled={isCreatingOrder}
           >
@@ -290,9 +317,11 @@ const styles = StyleSheet.create({
     borderColor: COLORS.lightGray || '#ccc',
     borderRadius: 8,
     marginBottom: 16,
+    overflow: 'hidden',
   },
   picker: {
     height: 50,
+    width: '100%',
   },
   submitButton: {
     backgroundColor: COLORS.primary,
@@ -318,6 +347,9 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });
 

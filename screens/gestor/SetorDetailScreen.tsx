@@ -1,238 +1,108 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TouchableOpacity, TextInput, FlatList } from 'react-native';
-import { COLORS } from '@/constants/colors'; // Ajuste o caminho conforme necessário
-import { 
-  useSectorControllerFindOne, 
-  useSectorControllerUpdate, 
-  useSectorControllerRemove, 
-  useSectorControllerAddConfig, 
-  useSectorControllerRemoveConfig,
-  useProdutoControllerFindAll 
-} from '@/api/generated'; // Ajuste o caminho conforme necessário
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
+import { useSectorsControllerCreate } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Picker } from '@react-native-picker/picker';
+import { useRouter } from 'expo-router';
 
-const SetorDetailScreen = () => {
+const SetorCreateScreen = () => {
   const router = useRouter();
-  const { setorId } = useLocalSearchParams();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Estados para campos editáveis
+  // Estados para os campos do formulário
+  const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  // Estado para configuração do setor (produtos)
-  const [availableProducts, setAvailableProducts] = useState([]);
-  const [selectedProductToAdd, setSelectedProductToAdd] = useState('');
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   // Verificar se o usuário é um gestor logado
   useEffect(() => {
     const checkUserRole = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
-        const userRole = await AsyncStorage.getItem('userRole');
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
 
         if (!token || userRole !== 'gestor') {
-          router.replace('/(login)/login');
+          if (isMounted) {
+            setTimeout(() => {
+              router.replace('/(login)/login');
+            }, 0);
+          }
         }
       } catch (error) {
         console.error('Falha ao verificar papel do usuário no armazenamento:', error);
         Alert.alert('Erro', 'Falha ao verificar permissões. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        if (isMounted) {
+          setTimeout(() => {
+            router.replace('/(login)/login');
+          }, 0);
+        }
       } finally {
         setIsLoadingUserCheck(false);
       }
     };
 
     checkUserRole();
-  }, [router]);
+  }, [router, isMounted]);
 
-  // Buscar detalhes do setor
-  const { data: setorResponse, isLoading: isLoadingSetor, error: setorError, refetch } = useSectorControllerFindOne(
-    Number(setorId),
-    {
-      query: {
-        enabled: !isLoadingUserCheck && !!setorId,
-        onSuccess: (data) => {
-          if (data?.data) {
-            setName(data.data.name || '');
-            setDescription(data.data.description || '');
-          }
-        }
-      }
-    }
-  );
-  const setor = setorResponse?.data;
-
-  // Buscar todos os produtos para o Picker
-  const { data: productsResponse, isLoading: isLoadingProducts } = useProdutoControllerFindAll({
-    query: {
-      enabled: !isLoadingUserCheck, // Só buscar produtos após checar usuário
-    }
-  });
-
-  useEffect(() => {
-    if (productsResponse?.data) {
-      setAvailableProducts(productsResponse.data);
-    }
-  }, [productsResponse]);
-
-  // Hook para atualizar setor
-  const { mutate: updateSetor, isLoading: isUpdating } = useSectorControllerUpdate({
+  // Hook para criar um novo setor
+  const { mutate: createSetor, isLoading: isCreating } = useSectorsControllerCreate({
     mutation: {
       onSuccess: () => {
-        Alert.alert('Sucesso', 'Setor atualizado com sucesso.');
-        setIsEditing(false);
-        refetch();
-      },
-      onError: (error) => {
-        console.error('Erro ao atualizar setor:', error);
-        Alert.alert('Erro', 'Não foi possível atualizar o setor.');
-      }
-    }
-  });
-
-  // Hook para remover setor
-  const { mutate: removeSetor, isLoading: isRemoving } = useSectorControllerRemove({
-    mutation: {
-      onSuccess: () => {
-        Alert.alert('Sucesso', 'Setor removido com sucesso.', [
-          { text: 'OK', onPress: () => router.back() }
+        Alert.alert('Sucesso', 'Setor criado com sucesso.', [
+          { text: 'OK', onPress: () => {
+            if (isMounted) {
+              router.back();
+            }
+          }}
         ]);
       },
       onError: (error) => {
-        console.error('Erro ao remover setor:', error);
-        Alert.alert('Erro', 'Não foi possível remover o setor.');
+        console.error('Erro ao criar setor:', error);
+        const errorMessage = error.response?.data?.message || 'Não foi possível criar o setor. Verifique os dados e tente novamente.';
+        Alert.alert('Erro', errorMessage);
       }
     }
   });
 
-  // Hook para adicionar configuração (produto ao setor)
-  const { mutate: addConfig, isLoading: isAddingConfig } = useSectorControllerAddConfig({
-    mutation: {
-      onSuccess: () => {
-        Alert.alert('Sucesso', 'Produto adicionado à configuração do setor.');
-        setSelectedProductToAdd(''); // Limpar seleção
-        refetch(); // Recarregar dados do setor
-      },
-      onError: (error) => {
-        console.error('Erro ao adicionar configuração:', error);
-        Alert.alert('Erro', 'Não foi possível adicionar o produto à configuração.');
-      }
-    }
-  });
-
-  // Hook para remover configuração (produto do setor)
-  const { mutate: removeConfig, isLoading: isRemovingConfig } = useSectorControllerRemoveConfig({
-    mutation: {
-      onSuccess: () => {
-        Alert.alert('Sucesso', 'Produto removido da configuração do setor.');
-        refetch(); // Recarregar dados do setor
-      },
-      onError: (error) => {
-        console.error('Erro ao remover configuração:', error);
-        Alert.alert('Erro', 'Não foi possível remover o produto da configuração.');
-      }
-    }
-  });
-
-  // Função para salvar alterações
-  const handleSaveChanges = () => {
-    if (!setorId) return;
-    updateSetor({
-      id: Number(setorId),
-      data: {
-        name,
-        description,
-      }
-    });
-  };
-
-  // Função para confirmar remoção
-  const handleDelete = () => {
-    if (!setorId) return;
-    Alert.alert(
-      'Confirmar Remoção',
-      `Tem certeza que deseja remover o setor ${setor?.name}? Esta ação não pode ser desfeita.`, 
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Remover',
-          style: 'destructive',
-          onPress: () => removeSetor({ id: Number(setorId) })
-        }
-      ]
-    );
-  };
-
-  // Função para adicionar produto à configuração
-  const handleAddProductConfig = () => {
-    if (!setorId || !selectedProductToAdd) {
-      Alert.alert('Erro', 'Selecione um produto para adicionar.');
+  // Função para validar e enviar o formulário
+  const handleSubmit = () => {
+    if (!code || !name) {
+      Alert.alert('Campos Obrigatórios', 'Por favor, preencha pelo menos o código e o nome do setor.');
       return;
     }
-    addConfig({
-      id: Number(setorId),
-      data: { productId: Number(selectedProductToAdd) }
-    });
-  };
 
-  // Função para remover produto da configuração
-  const handleRemoveProductConfig = (productId: number) => {
-    if (!setorId) return;
-    Alert.alert(
-      'Confirmar Remoção',
-      'Tem certeza que deseja remover este produto da configuração do setor?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Remover',
-          style: 'destructive',
-          onPress: () => removeConfig({ id: Number(setorId), productId: productId })
-        }
-      ]
-    );
-  };
-
-  // Lidar com erros da API
-  useEffect(() => {
-    if (setorError) {
-      console.error('Erro ao buscar detalhes do setor:', setorError);
-      Alert.alert('Erro', 'Não foi possível carregar os detalhes do setor.');
+    // Validar formato do código (opcional)
+    if (!/^[A-Za-z0-9]+$/.test(code)) {
+      Alert.alert('Código Inválido', 'O código deve conter apenas letras e números.');
+      return;
     }
-  }, [setorError]);
 
-  // Recarregar dados quando a tela receber foco
-  useEffect(() => {
-    const unsubscribe = router.addListener('focus', () => {
-      if (!isLoadingUserCheck && setorId) {
-        refetch();
-      }
-    });
-    return unsubscribe;
-  }, [router, refetch, isLoadingUserCheck, setorId]);
+    const setorData = {
+      code: code.toUpperCase(), // Garantir que o código seja em maiúsculas
+      name,
+      description: description || undefined,
+    };
 
-  if (isLoadingUserCheck || isLoadingSetor || isLoadingProducts) {
+    createSetor({ data: setorData });
+  };
+
+  const handleCancel = () => {
+    if (isMounted) {
+      router.back();
+    }
+  };
+
+  if (isLoadingUserCheck) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Carregando detalhes do setor...</Text>
-      </View>
-    );
-  }
-
-  if (!setor) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Setor não encontrado.</Text>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.backButtonText}>Voltar</Text>
-        </TouchableOpacity>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -240,143 +110,71 @@ const SetorDetailScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Detalhes do Setor</Text>
-        {!isEditing && (
-          <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.editButton}>
-            <Text style={styles.editButtonText}>Editar</Text>
-          </TouchableOpacity>
-        )}
+        <Text style={styles.headerTitle}>Criar Novo Setor</Text>
       </View>
 
-      <ScrollView style={styles.content}>
-        {/* Informações do Setor */}
-        <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>Informações</Text>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.formCard}>
+          <Text style={styles.sectionTitle}>Dados do Setor</Text>
           
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Código:</Text>
-            <Text style={styles.value}>{setor.code}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Nome:</Text>
-            {isEditing ? (
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-              />
-            ) : (
-              <Text style={styles.value}>{setor.name}</Text>
-            )}
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Descrição:</Text>
-            {isEditing ? (
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={4}
-              />
-            ) : (
-              <Text style={styles.value}>{setor.description || 'Não especificada'}</Text>
-            )}
-          </View>
-
-          {/* Datas */}
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Criado em:</Text>
-            <Text style={styles.value}>{new Date(setor.createdAt).toLocaleDateString('pt-BR')}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Atualizado em:</Text>
-            <Text style={styles.value}>{new Date(setor.updatedAt).toLocaleDateString('pt-BR')}</Text>
-          </View>
-
-          {/* Botões de Edição/Remoção */}
-          {isEditing && (
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.saveButton]} 
-                onPress={handleSaveChanges}
-                disabled={isUpdating}
-              >
-                {isUpdating ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.actionButtonText}>Salvar</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.cancelButton]} 
-                onPress={() => setIsEditing(false)}
-                disabled={isUpdating}
-              >
-                <Text style={styles.actionButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {!isEditing && (
+          <Text style={styles.label}>Código *</Text>
+          <TextInput
+            style={styles.input}
+            value={code}
+            onChangeText={setCode}
+            placeholder="Ex: SET001"
+            autoCapitalize="characters"
+            maxLength={10}
+            editable={!isCreating}
+          />
+          
+          <Text style={styles.label}>Nome *</Text>
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Nome do setor"
+            maxLength={50}
+            editable={!isCreating}
+          />
+          
+          <Text style={styles.label}>Descrição</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Descrição detalhada do setor (opcional)"
+            multiline
+            numberOfLines={4}
+            maxLength={200}
+            editable={!isCreating}
+          />
+          
+          <View style={styles.buttonContainer}>
             <TouchableOpacity 
-              style={[styles.actionButton, styles.deleteButton]} 
-              onPress={handleDelete}
-              disabled={isRemoving}
+              style={[styles.button, styles.submitButton]}
+              onPress={handleSubmit}
+              disabled={isCreating}
             >
-              {isRemoving ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.actionButtonText}>Remover Setor</Text>}
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Configuração do Setor (Produtos) */}
-        <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>Configuração de Produtos</Text>
-
-          {/* Adicionar Produto */}
-          <View style={styles.addConfigContainer}>
-            <Text style={styles.label}>Adicionar Produto ao Setor:</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={selectedProductToAdd}
-                onValueChange={(itemValue) => setSelectedProductToAdd(itemValue)}
-                style={styles.picker}
-              >
-                <Picker.Item label="Selecione um produto..." value="" />
-                {availableProducts.map((product) => (
-                  <Picker.Item key={product.id} label={`${product.name} (${product.code})`} value={product.id.toString()} />
-                ))}
-              </Picker>
-            </View>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.addButton]} 
-              onPress={handleAddProductConfig}
-              disabled={isAddingConfig || !selectedProductToAdd}
-            >
-              {isAddingConfig ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.actionButtonText}>Adicionar</Text>}
-            </TouchableOpacity>
-          </View>
-
-          {/* Lista de Produtos Configurados */}
-          <Text style={styles.subSectionTitle}>Produtos Configurados:</Text>
-          {setor.config && setor.config.length > 0 ? (
-            <FlatList
-              data={setor.config}
-              keyExtractor={(item) => item.product.id.toString()}
-              renderItem={({ item }) => (
-                <View style={styles.configItem}>
-                  <Text style={styles.configItemText}>{item.product.name} ({item.product.code})</Text>
-                  <TouchableOpacity 
-                    onPress={() => handleRemoveProductConfig(item.product.id)}
-                    disabled={isRemovingConfig}
-                  >
-                    <Text style={styles.removeConfigText}>Remover</Text>
-                  </TouchableOpacity>
-                </View>
+              {isCreating ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <Text style={styles.submitButtonText}>Criar Setor</Text>
               )}
-              scrollEnabled={false} // Disable scrolling for inner FlatList
-            />
-          ) : (
-            <Text style={styles.emptyConfigText}>Nenhum produto configurado para este setor.</Text>
-          )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.button, styles.cancelButton]}
+              onPress={handleCancel}
+              disabled={isCreating}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -393,58 +191,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
-    padding: 20,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: COLORS.text?.secondary || '#666',
-  },
-  errorText: {
-    fontSize: 16,
-    color: COLORS.error || 'red',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  backButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
   },
   header: {
     backgroundColor: COLORS.primary,
     padding: 20,
     paddingTop: 40,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.white,
-  },
-  editButton: {
-    backgroundColor: COLORS.accent || '#FFC107',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  editButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 14,
+    textAlign: 'center',
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 16,
   },
-  infoCard: {
+  formCard: {
     backgroundColor: COLORS.white,
     borderRadius: 10,
     padding: 16,
@@ -464,108 +229,54 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.lightGray || '#eee',
     paddingBottom: 8,
   },
-  subSectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.text?.primary || '#333',
-    marginTop: 16,
-    marginBottom: 12,
-  },
-  detailRow: {
-    marginBottom: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray || '#eee',
-  },
   label: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: COLORS.text?.secondary || '#666',
-    marginBottom: 4,
-  },
-  value: {
     fontSize: 16,
+    fontWeight: '600',
     color: COLORS.text?.primary || '#333',
+    marginBottom: 8,
   },
   input: {
     borderWidth: 1,
     borderColor: COLORS.lightGray || '#ccc',
     borderRadius: 8,
-    padding: 10,
+    padding: 12,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
+    marginBottom: 16,
+    backgroundColor: COLORS.white,
   },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 20,
+    marginTop: 10,
   },
-  actionButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+  button: {
+    paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
-    minWidth: 100,
-    marginTop: 10,
-  },
-  saveButton: {
-    backgroundColor: COLORS.success || '#4CAF50',
-  },
-  cancelButton: {
-    backgroundColor: COLORS.gray || '#9E9E9E',
-  },
-  deleteButton: {
-    backgroundColor: COLORS.error || '#F44336',
-  },
-  addButton: {
-    backgroundColor: COLORS.primary,
-    marginTop: 10,
-  },
-  actionButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  addConfigContainer: {
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: COLORS.lightGray || '#ccc',
-    borderRadius: 8,
+    justifyContent: 'center',
     marginBottom: 10,
   },
-  picker: {
-    height: 50,
+  submitButton: {
+    backgroundColor: COLORS.primary,
   },
-  configItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray || '#eee',
-  },
-  configItemText: {
-    fontSize: 16,
-    color: COLORS.text?.primary || '#333',
-  },
-  removeConfigText: {
-    color: COLORS.error || 'red',
+  submitButtonText: {
+    color: COLORS.white,
     fontWeight: 'bold',
+    fontSize: 16,
   },
-  emptyConfigText: {
-    fontSize: 14,
-    color: COLORS.text?.secondary || '#666',
-    textAlign: 'center',
-    marginTop: 10,
+  cancelButton: {
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.white,
+  },
+  cancelButtonText: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 
-export default SetorDetailScreen;
+export default SetorCreateScreen;
 

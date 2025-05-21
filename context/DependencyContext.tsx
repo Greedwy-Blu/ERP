@@ -1,7 +1,24 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 // Contexto para gerenciar dependências entre funcionalidades
-const DependencyContext = createContext();
+export const DependencyContext = createContext({
+  dependencies: {
+    setores: [],
+    funcionarios: [],
+    produtos: [],
+    gestores: [],
+  },
+  unlockedFeatures: {
+    criarOrdem: false,
+    atualizarStatus: false,
+    criarFuncionario: false,
+    criarSetor: false,
+    criarProduto: false,
+    rastrearOrdem: false,
+  },
+  checkFeatureUnlocked: (featureName: string) => false,
+  addEntity: (entityType: string, entity: any) => {},
+});
 
 export const DependencyProvider = ({ children }) => {
   // Estado para rastrear entidades disponíveis no sistema

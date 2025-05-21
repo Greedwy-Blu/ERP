@@ -1,52 +1,62 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { COLORS } from '@/constants/colors'; // Ajuste o caminho conforme necessário
-import { useOrdersControllerListHistoricoProducao } from '@/api/generated'; // Ajuste o caminho conforme necessário
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
+import { useOrdersControllerListHistoricoProducao } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 
 const HistoricoListScreen = () => {
   const router = useRouter();
-  const { orderId } = useLocalSearchParams(); // Opcional: ID da ordem para filtrar histórico específico
+  const { orderId } = useLocalSearchParams();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
-  // Verificar se o usuário está autenticado
+  // Verificar autenticação do usuário
   useEffect(() => {
     const checkUserAuth = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
+        const token = await AsyncStorage.getItem('access_token');
         
         if (!token) {
-          router.replace('/(login)/login');
+          setInitialCheckDone(true);
+          setTimeout(() => router.replace('/(login)/login'), 0);
           return;
         }
       } catch (error) {
         console.error('Falha ao verificar autenticação:', error);
         Alert.alert('Erro', 'Falha ao verificar autenticação. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        setInitialCheckDone(true);
+        setTimeout(() => router.replace('/(login)/login'), 0);
       } finally {
         setIsLoadingUserCheck(false);
+        setInitialCheckDone(true);
       }
     };
 
     checkUserAuth();
   }, [router]);
 
-  // Buscar histórico de produção usando o hook gerado pelo Orval
-  const { data: historicoResponse, isLoading: isLoadingHistorico, error: historicoError, refetch } = useOrdersControllerListHistoricoProducao(
-    orderId ? Number(orderId) : undefined, // Se orderId estiver definido, buscar histórico específico
+  // Buscar histórico de produção
+  const { 
+    data: historicoResponse, 
+    isLoading: isLoadingHistorico, 
+    error: historicoError, 
+    refetch 
+  } = useOrdersControllerListHistoricoProducao(
+    orderId ? Number(orderId) : 0,
     {
       query: {
-        enabled: !isLoadingUserCheck, // Só executar a consulta após a verificação do usuário
+        queryKey: ['historicoProducao', orderId],
+        enabled: initialCheckDone,
       }
     }
   );
 
-  // Assumindo que a API retorna { data: HistoricoProducao[] }
   const historicos = historicoResponse?.data || [];
 
   // Função para formatar a data
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     if (!dateString) return 'Data não disponível';
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR', { 
@@ -67,17 +77,80 @@ const HistoricoListScreen = () => {
   }, [historicoError]);
 
   // Recarregar dados quando a tela receber foco
-  useEffect(() => {
-    const unsubscribe = router.addListener('focus', () => {
-      if (!isLoadingUserCheck) {
+  useFocusEffect(
+    useCallback(() => {
+      if (initialCheckDone) {
         refetch();
       }
-    });
+    }, [initialCheckDone, refetch])
+  );
 
-    return unsubscribe;
-  }, [router, refetch, isLoadingUserCheck]);
+  const renderHistoricoItem = ({ item }) => (
+    <View style={styles.itemCard}>
+      <View style={styles.itemHeader}>
+        <Text style={styles.itemTitle}>
+          {item.tipo === 'status_change' ? 'Alteração de Status' : 
+           item.tipo === 'etapa_start' ? 'Início de Etapa' : 
+           item.tipo === 'etapa_end' ? 'Finalização de Etapa' : 
+           'Registro de Produção'}
+        </Text>
+        <Text style={styles.itemDate}>{formatDate(item.createdAt)}</Text>
+      </View>
+      
+      <View style={styles.itemDetails}>
+        {item.ordem && (
+          <Text style={styles.itemDetailText}>
+            <Text style={styles.itemDetailLabel}>Ordem: </Text>
+            OP-{item.ordem.id}
+          </Text>
+        )}
+        
+        {item.funcionario && (
+          <Text style={styles.itemDetailText}>
+            <Text style={styles.itemDetailLabel}>Funcionário: </Text>
+            {item.funcionario.nome}
+          </Text>
+        )}
+        
+        {item.etapa && (
+          <Text style={styles.itemDetailText}>
+            <Text style={styles.itemDetailLabel}>Etapa: </Text>
+            {item.etapa.nome}
+          </Text>
+        )}
+        
+        {item.statusAnterior && (
+          <Text style={styles.itemDetailText}>
+            <Text style={styles.itemDetailLabel}>Status Anterior: </Text>
+            {item.statusAnterior}
+          </Text>
+        )}
+        
+        {item.statusNovo && (
+          <Text style={styles.itemDetailText}>
+            <Text style={styles.itemDetailLabel}>Novo Status: </Text>
+            {item.statusNovo}
+          </Text>
+        )}
+        
+        {item.motivoInterrupcao && (
+          <Text style={styles.itemDetailText}>
+            <Text style={styles.itemDetailLabel}>Motivo de Interrupção: </Text>
+            {item.motivoInterrupcao.descricao}
+          </Text>
+        )}
+        
+        {item.observacoes && (
+          <Text style={styles.itemDetailText}>
+            <Text style={styles.itemDetailLabel}>Observações: </Text>
+            {item.observacoes}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
 
-  if (isLoadingUserCheck || isLoadingHistorico) {
+  if (!initialCheckDone || isLoadingUserCheck || isLoadingHistorico) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -94,81 +167,17 @@ const HistoricoListScreen = () => {
         </Text>
       </View>
 
-      {historicos.length > 0 ? (
-        <FlatList
-          data={historicos}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <View style={styles.itemCard}>
-              <View style={styles.itemHeader}>
-                <Text style={styles.itemTitle}>
-                  {item.tipo === 'status_change' ? 'Alteração de Status' : 
-                   item.tipo === 'etapa_start' ? 'Início de Etapa' : 
-                   item.tipo === 'etapa_end' ? 'Finalização de Etapa' : 
-                   'Registro de Produção'}
-                </Text>
-                <Text style={styles.itemDate}>{formatDate(item.createdAt)}</Text>
-              </View>
-              
-              <View style={styles.itemDetails}>
-                {item.ordem && (
-                  <Text style={styles.itemDetailText}>
-                    <Text style={styles.itemDetailLabel}>Ordem: </Text>
-                    OP-{item.ordem.id}
-                  </Text>
-                )}
-                
-                {item.funcionario && (
-                  <Text style={styles.itemDetailText}>
-                    <Text style={styles.itemDetailLabel}>Funcionário: </Text>
-                    {item.funcionario.nome}
-                  </Text>
-                )}
-                
-                {item.etapa && (
-                  <Text style={styles.itemDetailText}>
-                    <Text style={styles.itemDetailLabel}>Etapa: </Text>
-                    {item.etapa.nome}
-                  </Text>
-                )}
-                
-                {item.statusAnterior && (
-                  <Text style={styles.itemDetailText}>
-                    <Text style={styles.itemDetailLabel}>Status Anterior: </Text>
-                    {item.statusAnterior}
-                  </Text>
-                )}
-                
-                {item.statusNovo && (
-                  <Text style={styles.itemDetailText}>
-                    <Text style={styles.itemDetailLabel}>Novo Status: </Text>
-                    {item.statusNovo}
-                  </Text>
-                )}
-                
-                {item.motivoInterrupcao && (
-                  <Text style={styles.itemDetailText}>
-                    <Text style={styles.itemDetailLabel}>Motivo de Interrupção: </Text>
-                    {item.motivoInterrupcao.descricao}
-                  </Text>
-                )}
-                
-                {item.observacoes && (
-                  <Text style={styles.itemDetailText}>
-                    <Text style={styles.itemDetailLabel}>Observações: </Text>
-                    {item.observacoes}
-                  </Text>
-                )}
-              </View>
-            </View>
-          )}
-        />
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Nenhum registro de histórico encontrado.</Text>
-        </View>
-      )}
+      <FlatList
+        data={historicos}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.listContent}
+        renderItem={renderHistoricoItem}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Nenhum registro de histórico encontrado.</Text>
+          </View>
+        }
+      />
     </View>
   );
 };
@@ -201,8 +210,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    paddingBottom: 32,
   },
-  itemCard: {
+itemCard: {
     backgroundColor: COLORS.white,
     borderRadius: 10,
     padding: 16,

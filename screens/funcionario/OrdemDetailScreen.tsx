@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
-import { COLORS } from '@/constants/colors';
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
 import { useOrdersControllerFindOne, useOrdersControllerAtualizarStatus } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -10,16 +11,27 @@ const OrdemDetailScreen = () => {
   const { orderId } = useLocalSearchParams();
   const [userId, setUserId] = useState<number | null>(null);
   const [isLoadingUserId, setIsLoadingUserId] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   // Buscar ID do usuário do armazenamento
   useEffect(() => {
     const fetchUserId = async () => {
       try {
-        const storedUserId = await AsyncStorage.getItem('userId');
-        const token = await AsyncStorage.getItem('accessToken');
+        const storedUserId = await AsyncStorage.getItem('user_id');
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
         
-        if (!token) {
-          router.replace('/(login)/login');
+        if (!token || userRole !== 'funcionario') {
+          if (isMounted) {
+            setTimeout(() => {
+              router.replace('/(login)/login');
+            }, 0);
+          }
           return;
         }
         
@@ -28,31 +40,44 @@ const OrdemDetailScreen = () => {
         } else {
           console.error('ID do usuário não encontrado no armazenamento.');
           Alert.alert('Erro', 'ID do usuário não encontrado. Por favor, faça login novamente.');
-          router.replace('/(login)/login');
+          if (isMounted) {
+            setTimeout(() => {
+              router.replace('/(login)/login');
+            }, 0);
+          }
         }
       } catch (error) {
         console.error('Falha ao buscar ID do usuário do armazenamento:', error);
         Alert.alert('Erro', 'Falha ao carregar dados do usuário. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        if (isMounted) {
+          setTimeout(() => {
+            router.replace('/(login)/login');
+          }, 0);
+        }
       } finally {
         setIsLoadingUserId(false);
       }
     };
 
     fetchUserId();
-  }, [router]);
+  }, [router, isMounted]);
 
-  // Buscar detalhes da ordem usando o hook gerado pelo Orval
-  const { data: ordemResponse, isLoading: isLoadingOrdem, error: ordemError } = useOrdersControllerFindOne(
+  // Buscar detalhes da ordem
+  const { 
+    data: ordemResponse, 
+    isLoading: isLoadingOrdem, 
+    error: ordemError,
+    refetch 
+  } = useOrdersControllerFindOne(
     Number(orderId),
     {
       query: {
-        enabled: !!orderId && !isLoadingUserId, // Só executar a consulta quando o orderId estiver disponível
+        queryKey: ['order', orderId],
+        enabled: !!orderId && !isLoadingUserId && isMounted,
       }
     }
   );
 
-  // Assumindo que a API retorna { data: Order }
   const ordem = ordemResponse?.data;
 
   // Hook para atualizar o status da ordem
@@ -60,38 +85,39 @@ const OrdemDetailScreen = () => {
     mutation: {
       onSuccess: () => {
         Alert.alert('Sucesso', 'Status da ordem atualizado com sucesso.');
-        // Recarregar a página ou navegar de volta
+        refetch();
       },
       onError: (error) => {
         console.error('Erro ao atualizar status da ordem:', error);
-        Alert.alert('Erro', 'Não foi possível atualizar o status da ordem.');
+        const errorMessage = error.response?.data?.message || 'Não foi possível atualizar o status da ordem.';
+        Alert.alert('Erro', errorMessage);
       }
     }
   });
 
-  // Função para iniciar uma ordem
   const handleStartOrder = () => {
     if (!ordem || !orderId) return;
     
     atualizarStatus({
       id: Number(orderId),
       data: {
-        status: 'em_andamento'
+        status: 'em_andamento',
+        funcionarioId: userId
       }
     });
   };
 
-  // Função para interromper uma ordem (redireciona para tela de interrupção)
   const handleInterruptOrder = () => {
-    if (!ordem || !orderId) return;
+    if (!ordem || !orderId || !isMounted) return;
     
-    router.push({
-      pathname: '/(home)/OrdemUpdateStatusScreen',
-      params: { orderId: orderId, action: 'interrupt' }
-    });
+    setTimeout(() => {
+      router.push({
+        pathname: '/(app_main)/funcionario/OrdemUpdateStatusScreen',
+        params: { orderId: orderId.toString(), action: 'interrupt' }
+      });
+    }, 0);
   };
 
-  // Função para finalizar uma ordem
   const handleFinishOrder = () => {
     if (!ordem || !orderId) return;
     
@@ -103,9 +129,8 @@ const OrdemDetailScreen = () => {
     });
   };
 
-  // Função para obter a cor do status
-  const getStatusColor = (status) => {
-    switch (status) {
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
       case 'aberto': return COLORS.accent;
       case 'em_andamento': return COLORS.secondary;
       case 'interrompido': return COLORS.warning;
@@ -114,11 +139,16 @@ const OrdemDetailScreen = () => {
     }
   };
 
-  // Função para formatar a data
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     if (!dateString) return 'Data não disponível';
     const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return date.toLocaleDateString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   // Lidar com erros da API
@@ -128,6 +158,12 @@ const OrdemDetailScreen = () => {
       Alert.alert('Erro', 'Não foi possível carregar os detalhes da ordem de serviço.');
     }
   }, [ordemError]);
+
+  const handleBack = () => {
+    if (isMounted) {
+      router.back();
+    }
+  };
 
   if (isLoadingUserId || isLoadingOrdem) {
     return (
@@ -144,7 +180,7 @@ const OrdemDetailScreen = () => {
         <Text style={styles.errorText}>Ordem não encontrada ou você não tem permissão para visualizá-la.</Text>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={handleBack}
         >
           <Text style={styles.backButtonText}>Voltar</Text>
         </TouchableOpacity>
@@ -158,12 +194,15 @@ const OrdemDetailScreen = () => {
         <Text style={styles.headerTitle}>Detalhes da Ordem</Text>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.orderCard}>
           <View style={styles.orderHeader}>
             <Text style={styles.orderTitle}>OP-{ordem.id}</Text>
             <View style={[styles.statusBadge, { backgroundColor: getStatusColor(ordem.status) }]}>
-              <Text style={styles.statusText}>{ordem.status}</Text>
+              <Text style={styles.statusText}>{ordem.status.replace('_', ' ')}</Text>
             </View>
           </View>
           
@@ -207,7 +246,7 @@ const OrdemDetailScreen = () => {
                   <View style={styles.etapaHeader}>
                     <Text style={styles.etapaTitle}>{index + 1}. {etapa.nome}</Text>
                     <View style={[styles.etapaStatusBadge, { backgroundColor: getStatusColor(etapa.status) }]}>
-                      <Text style={styles.etapaStatusText}>{etapa.status}</Text>
+                      <Text style={styles.etapaStatusText}>{etapa.status.replace('_', ' ')}</Text>
                     </View>
                   </View>
                   
@@ -236,7 +275,6 @@ const OrdemDetailScreen = () => {
             </View>
           )}
           
-          {/* Botões de ação baseados no status atual */}
           <View style={styles.actionsContainer}>
             {ordem.status === 'aberto' && (
               <TouchableOpacity 
@@ -338,10 +376,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.white,
+    textAlign: 'center',
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 16,
+    paddingBottom: 20,
   },
   orderCard: {
     backgroundColor: COLORS.white,
@@ -369,11 +411,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
+    minWidth: 100,
+    alignItems: 'center',
   },
   statusText: {
     color: COLORS.white,
     fontSize: 12,
     fontWeight: 'bold',
+    textTransform: 'capitalize',
   },
   orderDetails: {
     marginBottom: 20,
@@ -394,7 +439,7 @@ const styles = StyleSheet.create({
   detailLabel: {
     width: '40%',
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: COLORS.text?.primary || '#333',
   },
   detailValue: {
@@ -426,11 +471,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
+    minWidth: 80,
+    alignItems: 'center',
   },
   etapaStatusText: {
     color: COLORS.white,
     fontSize: 10,
     fontWeight: 'bold',
+    textTransform: 'capitalize',
   },
   etapaDetails: {
     marginTop: 4,
@@ -439,6 +487,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.text?.secondary || '#666',
     marginBottom: 4,
+    lineHeight: 20,
   },
   etapaDetailLabel: {
     fontWeight: 'bold',
@@ -448,6 +497,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginTop: 20,
+    flexWrap: 'wrap',
+    gap: 10,
   },
   actionButton: {
     paddingVertical: 12,
@@ -455,6 +506,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     minWidth: 120,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   startButton: {
     backgroundColor: COLORS.secondary || '#4CAF50',

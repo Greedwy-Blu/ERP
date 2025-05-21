@@ -1,132 +1,158 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
-import { COLORS } from '@/constants/colors';
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
 import { useOrdersControllerFindOne, useOrdersControllerAtualizarStatus, useOrdersControllerListMotivosInterrupcao, useOrdersControllerCreateEtapa } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 
 const OrdemGestorDetailScreen = () => {
   const router = useRouter();
   const { orderId } = useLocalSearchParams();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
-  // Verificar se o usuário é um gestor logado
+  // Verificar autenticação e papel do usuário
   useEffect(() => {
     const checkUserRole = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
-        const userRole = await AsyncStorage.getItem('userRole');
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
 
-        if (!token || userRole !== 'gestor') {
-          // Se não houver token ou o papel não for gestor, redirecionar para login
-          router.replace('/(login)/login');
+        if (!token || userRole !== 'gestao') {
+          setInitialCheckDone(true);
+          setTimeout(() => router.replace('/(login)/login'), 0);
+          return;
         }
       } catch (error) {
-        console.error('Falha ao verificar papel do usuário no armazenamento:', error);
+        console.error('Falha ao verificar papel do usuário:', error);
         Alert.alert('Erro', 'Falha ao verificar permissões. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        setInitialCheckDone(true);
+        setTimeout(() => router.replace('/(login)/login'), 0);
       } finally {
         setIsLoadingUserCheck(false);
+        setInitialCheckDone(true);
       }
     };
 
     checkUserRole();
   }, [router]);
 
-  // Buscar detalhes da ordem usando o hook gerado pelo Orval
-  const { data: ordemResponse, isLoading: isLoadingOrdem, error: ordemError, refetch } = useOrdersControllerFindOne(
+  // Buscar detalhes da ordem
+  const { 
+    data: ordemResponse, 
+    isLoading: isLoadingOrdem, 
+    error: ordemError, 
+    refetch 
+  } = useOrdersControllerFindOne(
     Number(orderId),
     {
       query: {
-        enabled: !isLoadingUserCheck && !!orderId, // Só executar a consulta quando o orderId estiver disponível
+        queryKey: ['order', orderId],
+        enabled: initialCheckDone && !!orderId,
       }
     }
   );
 
-  // Assumindo que a API retorna { data: Order }
   const ordem = ordemResponse?.data;
 
-  // Buscar motivos de interrupção para uso posterior
-  const { data: motivosResponse, isLoading: isLoadingMotivos } = useOrdersControllerListMotivosInterrupcao({
+  // Buscar motivos de interrupção
+  const { data: motivosResponse } = useOrdersControllerListMotivosInterrupcao({
     query: {
-      enabled: !isLoadingUserCheck, // Só executar a consulta após a verificação do usuário
+      queryKey: ['motivosInterrupcao'],
+      enabled: initialCheckDone,
     }
   });
   const motivos = motivosResponse?.data || [];
 
-  // Hook para atualizar o status da ordem
+  // Hook para atualizar status
   const { mutate: atualizarStatus, isLoading: isUpdatingStatus } = useOrdersControllerAtualizarStatus({
     mutation: {
       onSuccess: () => {
         Alert.alert('Sucesso', 'Status da ordem atualizado com sucesso.');
-        refetch(); // Recarregar os dados da ordem
+        refetch();
       },
       onError: (error) => {
-        console.error('Erro ao atualizar status da ordem:', error);
-        Alert.alert('Erro', 'Não foi possível atualizar o status da ordem.');
+        console.error('Erro ao atualizar status:', error);
+        const errorMessage = error.response?.data?.message || 'Não foi possível atualizar o status.';
+        Alert.alert('Erro', errorMessage);
       }
     }
   });
 
-  // Hook para criar uma nova etapa
+  // Hook para criar etapa
   const { mutate: criarEtapa, isLoading: isCreatingEtapa } = useOrdersControllerCreateEtapa({
     mutation: {
       onSuccess: () => {
         Alert.alert('Sucesso', 'Nova etapa criada com sucesso.');
-        refetch(); // Recarregar os dados da ordem
+        refetch();
       },
       onError: (error) => {
-        console.error('Erro ao criar nova etapa:', error);
-        Alert.alert('Erro', 'Não foi possível criar a nova etapa.');
+        console.error('Erro ao criar etapa:', error);
+        const errorMessage = error.response?.data?.message || 'Não foi possível criar a etapa.';
+        Alert.alert('Erro', errorMessage);
       }
     }
   });
 
-  // Função para iniciar uma ordem
+  // Funções de ação
   const handleStartOrder = () => {
     if (!ordem || !orderId) return;
     
-    atualizarStatus({
-      id: Number(orderId),
-      data: {
-        status: 'em_andamento'
-      }
-    });
+    Alert.alert(
+      'Confirmar Início',
+      'Deseja iniciar esta ordem de produção?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Confirmar', 
+          onPress: () => atualizarStatus({
+            id: Number(orderId),
+            data: { status: 'em_andamento' }
+          })
+        }
+      ]
+    );
   };
 
-  // Função para interromper uma ordem (redireciona para tela de interrupção)
   const handleInterruptOrder = () => {
     if (!ordem || !orderId) return;
     
     router.push({
-      pathname: '/(home)/OrdemUpdateStatusScreen',
-      params: { orderId: orderId, action: 'interrupt' }
+      pathname: '/(home)/gestor/ordeminterruptscreen',
+      params: { orderId: orderId }
     });
   };
 
-  // Função para finalizar uma ordem
   const handleFinishOrder = () => {
     if (!ordem || !orderId) return;
     
-    atualizarStatus({
-      id: Number(orderId),
-      data: {
-        status: 'finalizado'
-      }
-    });
+    Alert.alert(
+      'Confirmar Finalização',
+      'Deseja finalizar esta ordem de produção?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Confirmar', 
+          onPress: () => atualizarStatus({
+            id: Number(orderId),
+            data: { status: 'finalizado' }
+          })
+        }
+      ]
+    );
   };
 
-  // Função para adicionar uma nova etapa
   const handleAddEtapa = () => {
     if (!ordem || !orderId) return;
     
     router.push({
-      pathname: '/(home)/OrdemFillScreen',
-      params: { orderId: orderId, action: 'add_etapa' }
+      pathname: '/(app_main)/gestor/ordemadetapascreen',
+      params: { orderId: orderId }
     });
   };
 
-  // Função para obter a cor do status
+  // Funções auxiliares
   const getStatusColor = (status) => {
     switch (status) {
       case 'aberto': return COLORS.accent;
@@ -137,33 +163,36 @@ const OrdemGestorDetailScreen = () => {
     }
   };
 
-  // Função para formatar a data
   const formatDate = (dateString) => {
     if (!dateString) return 'Data não disponível';
     const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return date.toLocaleDateString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
-  // Lidar com erros da API
+  // Lidar com erros
   useEffect(() => {
     if (ordemError) {
-      console.error('Erro ao buscar detalhes da ordem:', ordemError);
-      Alert.alert('Erro', 'Não foi possível carregar os detalhes da ordem de serviço.');
+      console.error('Erro ao buscar ordem:', ordemError);
+      Alert.alert('Erro', 'Não foi possível carregar os detalhes da ordem.');
     }
   }, [ordemError]);
 
-  // Recarregar dados quando a tela receber foco
-  useEffect(() => {
-    const unsubscribe = router.addListener('focus', () => {
-      if (!isLoadingUserCheck && orderId) {
+  // Recarregar dados ao focar na tela
+  useFocusEffect(
+    useCallback(() => {
+      if (initialCheckDone && orderId) {
         refetch();
       }
-    });
+    }, [initialCheckDone, orderId, refetch])
+  );
 
-    return unsubscribe;
-  }, [router, refetch, isLoadingUserCheck, orderId]);
-
-  if (isLoadingUserCheck || isLoadingOrdem) {
+  if (!initialCheckDone || isLoadingUserCheck || isLoadingOrdem) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -175,7 +204,7 @@ const OrdemGestorDetailScreen = () => {
   if (!ordem) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorText}>Ordem não encontrada ou você não tem permissão para visualizá-la.</Text>
+        <Text style={styles.errorText}>Ordem não encontrada.</Text>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => router.back()}
@@ -186,13 +215,45 @@ const OrdemGestorDetailScreen = () => {
     );
   }
 
+  const renderEtapaItem = ({ item, index }) => (
+    <View style={styles.etapaItem}>
+      <View style={styles.etapaHeader}>
+        <Text style={styles.etapaTitle}>{index + 1}. {item.nome}</Text>
+        <View style={[styles.etapaStatusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+          <Text style={styles.etapaStatusText}>{item.status}</Text>
+        </View>
+      </View>
+      
+      <View style={styles.etapaDetails}>
+        <Text style={styles.etapaDetailText}>
+          <Text style={styles.etapaDetailLabel}>Funcionário: </Text>
+          {item.funcionario?.nome || 'Não atribuído'}
+        </Text>
+        
+        {item.startedAt && (
+          <Text style={styles.etapaDetailText}>
+            <Text style={styles.etapaDetailLabel}>Iniciado em: </Text>
+            {formatDate(item.startedAt)}
+          </Text>
+        )}
+        
+        {item.finishedAt && (
+          <Text style={styles.etapaDetailText}>
+            <Text style={styles.etapaDetailLabel}>Finalizado em: </Text>
+            {formatDate(item.finishedAt)}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Detalhes da Ordem</Text>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.orderCard}>
           <View style={styles.orderHeader}>
             <Text style={styles.orderTitle}>OP-{ordem.id}</Text>
@@ -237,103 +298,32 @@ const OrdemGestorDetailScreen = () => {
             )}
           </View>
           
-          {ordem.etapas && ordem.etapas.length > 0 && (
+          {ordem.etapas?.length > 0 && (
             <View style={styles.etapasSection}>
               <Text style={styles.sectionTitle}>Etapas</Text>
-              
               {ordem.etapas.map((etapa, index) => (
-                <View key={etapa.id} style={styles.etapaItem}>
-                  <View style={styles.etapaHeader}>
-                    <Text style={styles.etapaTitle}>{index + 1}. {etapa.nome}</Text>
-                    <View style={[styles.etapaStatusBadge, { backgroundColor: getStatusColor(etapa.status) }]}>
-                      <Text style={styles.etapaStatusText}>{etapa.status}</Text>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.etapaDetails}>
-                    <Text style={styles.etapaDetailText}>
-                      <Text style={styles.etapaDetailLabel}>Funcionário: </Text>
-                      {etapa.funcionario?.nome || 'Não atribuído'}
-                    </Text>
-                    
-                    {etapa.startedAt && (
-                      <Text style={styles.etapaDetailText}>
-                        <Text style={styles.etapaDetailLabel}>Iniciado em: </Text>
-                        {formatDate(etapa.startedAt)}
-                      </Text>
-                    )}
-                    
-                    {etapa.finishedAt && (
-                      <Text style={styles.etapaDetailText}>
-                        <Text style={styles.etapaDetailLabel}>Finalizado em: </Text>
-                        {formatDate(etapa.finishedAt)}
-                      </Text>
-                    )}
-                  </View>
-                  
-                  {/* Botões de ação para etapas (apenas para gestor) */}
-                  <View style={styles.etapaActions}>
-                    {etapa.status === 'aberto' && (
-                      <TouchableOpacity 
-                        style={[styles.etapaActionButton, styles.startButton]}
-                        onPress={() => {
-                          // Implementar lógica para iniciar etapa
-                          Alert.alert('Iniciar Etapa', 'Deseja iniciar esta etapa?', [
-                            { text: 'Cancelar', style: 'cancel' },
-                            { 
-                              text: 'Iniciar', 
-                              onPress: () => {
-                                // Chamar API para iniciar etapa
-                                // Exemplo: iniciarEtapa({ id: etapa.id })
-                              } 
-                            }
-                          ]);
-                        }}
-                      >
-                        <Text style={styles.etapaActionButtonText}>Iniciar</Text>
-                      </TouchableOpacity>
-                    )}
-                    
-                    {etapa.status === 'em_andamento' && (
-                      <TouchableOpacity 
-                        style={[styles.etapaActionButton, styles.finishButton]}
-                        onPress={() => {
-                          // Implementar lógica para finalizar etapa
-                          Alert.alert('Finalizar Etapa', 'Deseja finalizar esta etapa?', [
-                            { text: 'Cancelar', style: 'cancel' },
-                            { 
-                              text: 'Finalizar', 
-                              onPress: () => {
-                                // Chamar API para finalizar etapa
-                                // Exemplo: finalizarEtapa({ id: etapa.id })
-                              } 
-                            }
-                          ]);
-                        }}
-                      >
-                        <Text style={styles.etapaActionButtonText}>Finalizar</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
+                <React.Fragment key={etapa.id}>
+                  {renderEtapaItem({ item: etapa, index })}
+                </React.Fragment>
               ))}
               
-              {/* Botão para adicionar nova etapa */}
-              <TouchableOpacity 
-                style={styles.addEtapaButton}
-                onPress={handleAddEtapa}
-                disabled={isCreatingEtapa || ordem.status === 'finalizado'}
-              >
-                {isCreatingEtapa ? (
-                  <ActivityIndicator color={COLORS.white} size="small" />
-                ) : (
-                  <Text style={styles.addEtapaButtonText}>+ Adicionar Nova Etapa</Text>
-                )}
-              </TouchableOpacity>
+              {ordem.status !== 'finalizado' && (
+                <TouchableOpacity 
+                  style={styles.addEtapaButton}
+                  onPress={handleAddEtapa}
+                  disabled={isCreatingEtapa}
+                >
+                  {isCreatingEtapa ? (
+                    <ActivityIndicator color={COLORS.white} size="small" />
+                  ) : (
+                    <Text style={styles.addEtapaButtonText}>+ Adicionar Etapa</Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           )}
           
-          {/* Botões de ação baseados no status atual */}
+          {/* Ações baseadas no status */}
           <View style={styles.actionsContainer}>
             {ordem.status === 'aberto' && (
               <TouchableOpacity 
@@ -388,12 +378,14 @@ const OrdemGestorDetailScreen = () => {
             )}
           </View>
           
-          {/* Botão para ver histórico detalhado */}
           <TouchableOpacity 
             style={styles.historyButton}
-            onPress={() => router.push({ pathname: '/(home)/HistoricoListScreen', params: { orderId: orderId }})}
+            onPress={() => router.push({ 
+              pathname: '/(app_main)/gestor/HistoricoListScreen', 
+              params: { orderId: orderId }
+            })}
           >
-            <Text style={styles.historyButtonText}>Ver Histórico Detalhado</Text>
+            <Text style={styles.historyButtonText}>Ver Histórico Completo</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -549,21 +541,6 @@ const styles = StyleSheet.create({
   etapaDetailLabel: {
     fontWeight: 'bold',
     color: COLORS.text?.primary || '#333',
-  },
-  etapaActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  etapaActionButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    marginLeft: 8,
-  },
-  etapaActionButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 12,
   },
   addEtapaButton: {
     backgroundColor: COLORS.primary,

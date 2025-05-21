@@ -1,52 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { COLORS } from '@/constants/colors'; // Ajuste o caminho conforme necessário
-import { useSectorControllerCreate } from '@/api/generated'; // Ajuste o caminho conforme necessário
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
+import { useSectorsControllerCreate } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 
 const SetorCreateScreen = () => {
   const router = useRouter();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   // Estados para os campos do formulário
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
   // Verificar se o usuário é um gestor logado
   useEffect(() => {
     const checkUserRole = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
-        const userRole = await AsyncStorage.getItem('userRole');
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
 
         if (!token || userRole !== 'gestor') {
-          router.replace('/(login)/login');
+          if (isMounted) {
+            setTimeout(() => {
+              router.replace('/(login)/login');
+            }, 0);
+          }
         }
       } catch (error) {
         console.error('Falha ao verificar papel do usuário no armazenamento:', error);
         Alert.alert('Erro', 'Falha ao verificar permissões. Por favor, faça login novamente.');
-        router.replace('/(login)/login');
+        if (isMounted) {
+          setTimeout(() => {
+            router.replace('/(login)/login');
+          }, 0);
+        }
       } finally {
         setIsLoadingUserCheck(false);
       }
     };
 
     checkUserRole();
-  }, [router]);
+  }, [router, isMounted]);
 
   // Hook para criar um novo setor
-  const { mutate: createSetor, isLoading: isCreating } = useSectorControllerCreate({
+  const { mutate: createSetor, isLoading: isCreating } = useSectorsControllerCreate({
     mutation: {
       onSuccess: () => {
         Alert.alert('Sucesso', 'Setor criado com sucesso.', [
-          { text: 'OK', onPress: () => router.back() } // Voltar após a criação
+          { text: 'OK', onPress: () => {
+            if (isMounted) {
+              router.back();
+            }
+          }}
         ]);
       },
       onError: (error) => {
         console.error('Erro ao criar setor:', error);
-        // Verificar mensagens de erro específicas da API, se disponíveis
         const errorMessage = error.response?.data?.message || 'Não foi possível criar o setor. Verifique os dados e tente novamente.';
         Alert.alert('Erro', errorMessage);
       }
@@ -55,27 +73,36 @@ const SetorCreateScreen = () => {
 
   // Função para validar e enviar o formulário
   const handleSubmit = () => {
-    // Validar campos obrigatórios
     if (!code || !name) {
       Alert.alert('Campos Obrigatórios', 'Por favor, preencha pelo menos o código e o nome do setor.');
       return;
     }
 
-    // Preparar dados para a API
+    // Validar formato do código (opcional)
+    if (!/^[A-Za-z0-9]+$/.test(code)) {
+      Alert.alert('Código Inválido', 'O código deve conter apenas letras e números.');
+      return;
+    }
+
     const setorData = {
-      code,
+      code: code.toUpperCase(), // Garantir que o código seja em maiúsculas
       name,
       description: description || undefined,
     };
 
-    // Chamar a mutação
     createSetor({ data: setorData });
+  };
+
+  const handleCancel = () => {
+    if (isMounted) {
+      router.back();
+    }
   };
 
   if (isLoadingUserCheck) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -86,25 +113,33 @@ const SetorCreateScreen = () => {
         <Text style={styles.headerTitle}>Criar Novo Setor</Text>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.formCard}>
           <Text style={styles.sectionTitle}>Dados do Setor</Text>
           
-          <Text style={styles.label}>Código</Text>
+          <Text style={styles.label}>Código *</Text>
           <TextInput
             style={styles.input}
             value={code}
             onChangeText={setCode}
             placeholder="Ex: SET001"
             autoCapitalize="characters"
+            maxLength={10}
+            editable={!isCreating}
           />
           
-          <Text style={styles.label}>Nome</Text>
+          <Text style={styles.label}>Nome *</Text>
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={setName}
             placeholder="Nome do setor"
+            maxLength={50}
+            editable={!isCreating}
           />
           
           <Text style={styles.label}>Descrição</Text>
@@ -112,30 +147,34 @@ const SetorCreateScreen = () => {
             style={[styles.input, styles.textArea]}
             value={description}
             onChangeText={setDescription}
-            placeholder="Descrição detalhada do setor"
+            placeholder="Descrição detalhada do setor (opcional)"
             multiline
             numberOfLines={4}
+            maxLength={200}
+            editable={!isCreating}
           />
           
-          <TouchableOpacity 
-            style={styles.submitButton}
-            onPress={handleSubmit}
-            disabled={isCreating}
-          >
-            {isCreating ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <Text style={styles.submitButtonText}>Criar Setor</Text>
-            )}
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.cancelButton}
-            onPress={() => router.back()}
-            disabled={isCreating}
-          >
-            <Text style={styles.cancelButtonText}>Cancelar</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={[styles.button, styles.submitButton]}
+              onPress={handleSubmit}
+              disabled={isCreating}
+            >
+              {isCreating ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <Text style={styles.submitButtonText}>Criar Setor</Text>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.button, styles.cancelButton]}
+              onPress={handleCancel}
+              disabled={isCreating}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -162,9 +201,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.white,
+    textAlign: 'center',
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 16,
   },
   formCard: {
@@ -189,7 +231,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: COLORS.text?.primary || '#333',
     marginBottom: 8,
   },
@@ -200,18 +242,24 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     marginBottom: 16,
+    backgroundColor: COLORS.white,
   },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
   },
-  submitButton: {
-    backgroundColor: COLORS.primary,
+  buttonContainer: {
+    marginTop: 10,
+  },
+  button: {
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 10,
+    justifyContent: 'center',
     marginBottom: 10,
+  },
+  submitButton: {
+    backgroundColor: COLORS.primary,
   },
   submitButtonText: {
     color: COLORS.white,
@@ -221,9 +269,7 @@ const styles = StyleSheet.create({
   cancelButton: {
     borderWidth: 1,
     borderColor: COLORS.primary,
-    paddingVertical: 15,
-    borderRadius: 8,
-    alignItems: 'center',
+    backgroundColor: COLORS.white,
   },
   cancelButtonText: {
     color: COLORS.primary,

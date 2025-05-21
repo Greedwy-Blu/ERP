@@ -16,14 +16,18 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   Easing,
-  runOnJS,
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import { useAuthControllerLogin } from '@/api/generated';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
+
+// Definindo os tipos de rotas permitidas
+type AppRoute =
+  '/(home)/funcionario/funcionariodashboard' |
+  '/(home)/gestor/gestordashboard' |
+  '/(home)/guide/livroSelecao';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -31,94 +35,101 @@ export default function LoginScreen() {
   const opacity = useSharedValue(0);
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Usar o hook de login gerado pelo Orval
-  const { mutate: login, isLoading: isLoginLoading } = useAuthControllerLogin({
+  // Configuração do hook de login
+  const { mutate: login, isLoading: isLoginLoading, } = useAuthControllerLogin({
     mutation: {
       onSuccess: async (response) => {
-        const { data } = response;
-        
-        // Salvar token e informações do usuário
-        await AsyncStorage.setItem('accessToken', data.accessToken);
-        await AsyncStorage.setItem('userRole', data.role);
-        
-        // Salvar ID do usuário baseado no papel
-        if (data.role === 'funcionario' && data.funcionario) {
-          await AsyncStorage.setItem('userId', data.funcionario.id.toString());
-        } else if (data.role === 'gestor' && data.gestao) {
-          await AsyncStorage.setItem('userId', data.gestao.id.toString());
+        try {
+          if (response.access_token) {
+            await AsyncStorage.multiSet([
+              ['access_token', response.access_token],
+              ['user_role', response.role || ''],
+              ['user_id', response.sub],
+              ['user_code', response.code],
+             
+            ]);
+            await AsyncStorage.mergeItem(
+              'user_data',
+              JSON.stringify({
+                
+                user: response.user,
+                userAuth: response.userAuth,
+              })
+            );
+
+          }
+
+          const role = response.role;
+
+          if (!role) {
+            throw new Error('Role não encontrada na resposta da API');
+          }
+
+          // Mapeamento de roles para rotas com tipos seguros
+          const routeMap: Record<string, AppRoute> = {
+            funcionario: '/(home)/funcionario/funcionariodashboard',
+            gestao: '/(home)/gestor/gestordashboard',
+            default: '/(home)/guide/livroSelecao'
+          };
+
+          const route = routeMap[role] || routeMap.default;
+          router.replace(route);
+          console.log('login', route)
+        } catch (error) {
+          console.error('Erro no tratamento da resposta:', error);
+          Alert.alert(
+            'Erro',
+            'Ocorreu um erro ao processar a resposta do servidor. Por favor, tente novamente.'
+          );
         }
-        
-        // Redirecionar baseado no papel do usuário
-        if (data.role === 'funcionario') {
-          router.push('/(app_main)/funcionario/FuncionarioDashboard');
-        } else if (data.role === 'gestor') {
-          router.push('/(app_main)/gestor/GestorDashboard');
-        } else {
-          router.push('/(home)/guide/livroSelecao');
-        }
-        
-        setIsLoading(false);
       },
       onError: (error) => {
-        console.error('Erro ao fazer login:', error);
+        console.error('Erro no login:', error);
         Alert.alert(
           'Erro de Autenticação',
-          'Código ou senha incorretos. Por favor, tente novamente.'
+          error.response?.message || 'Credenciais inválidas. Tente novamente.'
         );
-        setIsLoading(false);
       }
     }
   });
 
-  const handleLogin = () => {
-    if (!code || !password) {
-      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos.');
-      return;
-    }
-
-    setIsLoading(true);
-    
-    // Chamar a mutação de login com os dados do formulário
-    login({
-      data: {
-        code,
-        password
-      }
-    });
-  };
-
+  // Animação de entrada
   useEffect(() => {
     scale.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
     opacity.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
-    
-    // Verificar se já existe um token válido
-    const checkToken = async () => {
-      try {
-        const token = await AsyncStorage.getItem('accessToken');
-        const userRole = await AsyncStorage.getItem('userRole');
-        
-        if (token) {
-          // Configurar o token no axios para futuras requisições
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          
-          // Redirecionar baseado no papel do usuário
-          if (data.role === 'funcionario') {
-            router.push('/(app_main)/funcionario/FuncionarioDashboard');
-          } else if (data.role === 'gestor') {
-            router.push('/(app_main)/gestor/GestorDashboard');
-         } else {
-            router.push('/(home)/guide/livroSelecao');
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao verificar token:', error);
-      }
-    };
-    
-    checkToken();
   }, []);
+
+  const handleLogin = async () => {
+    try {
+      if (!code.trim() || !password.trim()) {
+        Alert.alert('Campos obrigatórios', 'Por favor, preencha todos os campos.');
+        return;
+      }
+
+      const loginData = {
+        code: code.trim(),
+        password: password.trim()
+      };
+
+      await login({ data: loginData });
+
+    } catch (error) {
+      console.error('Erro no login:', error);
+      let errorDetails = '';
+
+      if (error.response?.data?.message) {
+        errorDetails = Array.isArray(error.response.data.message)
+          ? error.response.data.message.join('\n')
+          : error.response.data.message;
+      }
+
+      Alert.alert(
+        'Erro de Login',
+        errorDetails || 'Ocorreu um erro durante o login. Por favor, tente novamente.'
+      );
+    }
+  };
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -129,7 +140,6 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
 
-      {/* Círculos decorativos ao fundo */}
       <View style={StyleSheet.absoluteFill}>
         <Animated.View style={[styles.circle, styles.circleTopLeft, animatedStyle]} />
         <Animated.View style={[styles.circle, styles.circleRightMid, animatedStyle]} />
@@ -137,36 +147,36 @@ export default function LoginScreen() {
         <Animated.View style={[styles.circle, styles.circleBottomRight, animatedStyle]} />
       </View>
 
-      {/* Conteúdo principal e rodapé */}
       <View style={styles.main}>
         <View style={styles.content}>
           <Text style={styles.title}>Login</Text>
-          <Text style={styles.subtitle}>Sempre bom de ter de volta!</Text>
+          <Text style={styles.subtitle}>Sempre bom ter você de volta!</Text>
 
           <TextInput
-            placeholder="Código"
+            placeholder="code"
             placeholderTextColor="#9ACBD0"
             style={styles.input}
-            keyboardType="default"
             value={code}
             onChangeText={setCode}
+            autoCapitalize="none"
+            autoCorrect={false}
           />
 
           <TextInput
-            placeholder="Senha"
+            placeholder="password"
             placeholderTextColor="#9ACBD0"
             style={styles.input}
-            secureTextEntry={true}
+            secureTextEntry
             value={password}
             onChangeText={setPassword}
           />
 
-          <TouchableOpacity 
-            style={styles.button} 
+          <TouchableOpacity
+            style={styles.button}
             onPress={handleLogin}
-            disabled={isLoading || isLoginLoading}
+            disabled={isLoginLoading}
           >
-            {isLoading || isLoginLoading ? (
+            {isLoginLoading ? (
               <ActivityIndicator color="#F2EFE7" />
             ) : (
               <Text style={styles.buttonText}>Entrar</Text>
@@ -181,6 +191,7 @@ export default function LoginScreen() {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

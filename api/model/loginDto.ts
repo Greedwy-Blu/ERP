@@ -11,4 +11,5 @@ export interface LoginDto {
   code: string;
   /** Senha do usuário */
   password: string;
+
 }

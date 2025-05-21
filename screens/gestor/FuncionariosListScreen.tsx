@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { COLORS } from '@/constants/colors'; // Adjust path if needed
+import { Colors} from '@/constants/Colors'; // Ajuste o caminho conforme necessário
+import { COLORS} from '@/constants/cor'; // Adjust path if needed
 import { useFuncionarioControllerFindAll } from '@/api/generated'; // Adjust path if needed
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 const FuncionariosListScreen = () => {
   const router = useRouter();
@@ -13,8 +14,8 @@ const FuncionariosListScreen = () => {
   useEffect(() => {
     const checkUserRole = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
-        const userRole = await AsyncStorage.getItem('userRole');
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = await AsyncStorage.getItem('user_role');
 
         if (!token || userRole !== 'gestor') {
           // If no token or role is not gestor, redirect to login
@@ -50,16 +51,14 @@ const FuncionariosListScreen = () => {
     }
   }, [funcionariosError]);
 
-  // Refetch data when the screen is focused
-  useEffect(() => {
-    const unsubscribe = router.addListener('focus', () => {
+
+  useFocusEffect(
+    React.useCallback(() => {
       if (!isLoadingUserCheck) {
         refetch();
       }
-    });
-
-    return unsubscribe;
-  }, [router, refetch, isLoadingUserCheck]);
+    }, [refetch, isLoadingUserCheck])
+  );
 
   if (isLoadingUserCheck || isLoadingFuncionarios) {
     return (
@@ -76,7 +75,7 @@ const FuncionariosListScreen = () => {
         <Text style={styles.headerTitle}>Gerenciar Funcionários</Text>
         <TouchableOpacity 
           style={styles.createButton}
-          onPress={() => router.push('/(home)/FuncionarioCreateScreen')} // Adjust route as needed
+          onPress={() => router.push('/(app_main)/gestor/FuncionarioCreateScreen')} // Adjust route as needed
         >
           <Text style={styles.createButtonText}>+ Novo Funcionário</Text>
         </TouchableOpacity>
@@ -91,7 +90,7 @@ const FuncionariosListScreen = () => {
             <TouchableOpacity
               style={styles.itemCard}
               // Adjust route path and params for expo-router
-              onPress={() => router.push({ pathname: '/(home)/FuncionarioDetailScreen', params: { funcionarioId: item.id }})}
+              onPress={() => router.push({ pathname: '/(app_main)/gestor/FuncionarioDetailScreen', params: { funcionarioId: item.id }})}
             >
               <View style={styles.itemHeader}>
                 <Text style={styles.itemTitle}>{item.nome}</Text>
@@ -215,4 +214,3 @@ const styles = StyleSheet.create({
 });
 
 export default FuncionariosListScreen;
-

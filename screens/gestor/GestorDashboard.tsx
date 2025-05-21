@@ -1,141 +1,169 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { COLORS } from '@/constants/colors'; // Adjust path if needed
-import { useDependency } from '@/context/DependencyContext'; // Assuming DependencyContext exists and is set up
+import { Colors } from '@/constants/Colors';
+import { COLORS } from '@/constants/cor';
+import { DependencyContext } from '@/context/DependencyContext';
 import { useQuery } from '@tanstack/react-query';
-import { useGestaoControllerFindOne, useOrdersControllerFindAll } from '@/api/generated'; // Adjust path if needed
+import { useGestaoControllerFindOne, useOrdersControllerFindAll } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useRouter, RelativePathString } from 'expo-router';
+import { useAuth } from '@/hooks/useAuth';
+
+interface DependencyContextType {
+  checkFeatureUnlocked?: (featureName: string) => boolean;
+}
 
 const GestorDashboard = () => {
   const router = useRouter();
-  const { checkFeatureUnlocked } = useDependency(); // Use dependency hook
+  const dependencyContext = useContext(DependencyContext) as DependencyContextType;
+  const { checkFeatureUnlocked } = dependencyContext || {};
   const [userId, setUserId] = useState<number | null>(null);
   const [isLoadingUserId, setIsLoadingUserId] = useState(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const { data, isLoading: isLoadingAuth } = useAuth();
 
-  // Get user ID from storage
+  // Get user ID from storage and validate session
   useEffect(() => {
     const fetchUserId = async () => {
       try {
-        const storedUserId = await AsyncStorage.getItem('userId');
-        const token = await AsyncStorage.getItem('accessToken');
-        const userRole = await AsyncStorage.getItem('userRole');
+        if (!data?.gestao) {
+          throw new Error('Gestão data not available');
+        }
 
-        if (!token || userRole !== 'gestor') {
-          // If no token or role is not gestor, redirect to login
-          router.replace('/(login)/login'); // Adjust route as needed
+        const storedUserId = data.gestao.id;
+        const token = await AsyncStorage.getItem('access_token');
+        const userRole = data.gestao.role;
+
+        if (!token || userRole !== 'gestao') {
+          setInitialCheckDone(true);
+          setTimeout(() => router.replace('/(login)/login' as RelativePathString), 0);
           return;
         }
         
         if (storedUserId) {
-          setUserId(parseInt(storedUserId, 10));
+          setUserId(parseInt(storedUserId.toString(), 10));
         } else {
           console.error('User ID not found in storage.');
           Alert.alert('Erro', 'ID do usuário não encontrado. Por favor, faça login novamente.');
-          router.replace('/(login)/login'); // Adjust route as needed
+          setInitialCheckDone(true);
+          setTimeout(() => router.replace('/(login)/login' as RelativePathString), 0);
         }
       } catch (error) {
-        console.error('Failed to fetch user ID from storage:', error);
+        console.error('Failed to fetch user ID:', error);
         Alert.alert('Erro', 'Falha ao carregar dados do usuário. Por favor, faça login novamente.');
-        router.replace('/(login)/login'); // Adjust route as needed
+        setInitialCheckDone(true);
+        setTimeout(() => router.replace('/(login)/login' as RelativePathString), 0);
       } finally {
         setIsLoadingUserId(false);
+        setInitialCheckDone(true);
       }
     };
 
-    fetchUserId();
-  }, [router]);
-
-  // Fetch manager data using the retrieved userId
-  const { data: gestorResponse, isLoading: isLoadingGestor, error: gestorError } = useGestaoControllerFindOne(
-    userId!, // Pass userId, ensure it's not null
-    {
-      query: {
-        enabled: !!userId, // Only run query when userId is available
-      }
+    if (data) {
+      fetchUserId();
     }
-  );
-  const gestor = gestorResponse?.data; // Assuming API returns { data: GestorObject }
+  }, [data, router]);
 
-  // Fetch all orders (for recent orders section)
-  // Assuming the API returns orders sorted by creation date or we sort them client-side
-  const { data: ordensResponse, isLoading: isLoadingOrdens, error: ordensError } = useOrdersControllerFindAll({
+  // Fetch manager data
+  const { 
+    data: gestorResponse, 
+    isLoading: isLoadingGestor, 
+    error: gestorError 
+  } = useGestaoControllerFindOne(userId!, {
     query: {
-        enabled: !!userId, // Only run query when userId is available
-    },
-    // Add sorting/limiting params if API supports it
-    // axios: { params: { _sort: 'createdAt:DESC', _limit: 3 } }
+      queryKey: ['gestao', userId],
+      enabled: !!userId,
+    }
   });
 
-  // Sort by creation date (most recent first) and take the top 3
-  const ordensRecentes = (ordensResponse?.data || [])
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 3);
+  // Fetch all orders
+  const { 
+    data: ordensResponse, 
+    isLoading: isLoadingOrdens, 
+    error: ordensError 
+  } = useOrdersControllerFindAll({
+    query: {
+      queryKey: ['orders', userId],
+      enabled: !!userId,
+    },
+  });
 
-  const handleNavigation = (screen, featureName = null, prerequisiteMessage = null) => {
-    // Check feature unlock status if applicable
-    // The original code had a checkFeatureUnlocked, keeping it similar
-    // This might need adjustment based on how DependencyContext is implemented
-    if (featureName && typeof checkFeatureUnlocked === 'function' && !checkFeatureUnlocked(featureName)) {
+  // Handle navigation with feature check
+  const handleNavigation = (
+    screen: RelativePathString,
+    featureName?: string,
+    prerequisiteMessage?: string
+  ) => {
+    if (featureName && checkFeatureUnlocked && !checkFeatureUnlocked(featureName)) {
       Alert.alert(
         'Ação Bloqueada',
         prerequisiteMessage || `Funcionalidade ${featureName} requer configurações prévias.`,
         [{ text: 'OK' }]
       );
     } else {
-      // Use expo-router for navigation
-      router.push(screen); // Pass the route path directly
+      router.replace(screen);
+      console.log(`Navigating to ${screen}`);
+      
+      console.log(`Navigating to ${router}`);
     }
   };
 
+  // Recent orders sorted by date
+  const ordensRecentes = (ordensResponse?.data || [])
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 3);
+
+  // Menu items configuration
   const menuItems = [
     {
       id: 'ordens',
       title: 'Ordens de Serviço',
       icon: '📋',
-      // Adjust route path according to your expo-router setup
-      onPress: () => handleNavigation('/(home)/OrdensGestorListScreen') 
+      onPress: () => handleNavigation('/(home)/gestor/ordensgestorlistscreen' as RelativePathString) 
     },
     {
       id: 'funcionarios',
       title: 'Funcionários',
       icon: '👥',
-      // Adjust route path and feature check logic as needed
-      onPress: () => handleNavigation('/(home)/FuncionariosListScreen', 'criarFuncionario', 'É necessário criar setores antes de gerenciar funcionários.')
+      onPress: () => handleNavigation(
+        '/(home)/gestor/funcionarioslistscreen' as RelativePathString
+      )
     },
     {
       id: 'setores',
       title: 'Setores',
       icon: '🏢',
-      // Adjust route path and feature check logic as needed
-      onPress: () => handleNavigation('/(home)/SetoresListScreen', 'criarSetor')
+      onPress: () => handleNavigation(
+        '/(home)/gestor/setoreslistscreen' as RelativePathString
+      )
     },
     {
       id: 'produtos',
       title: 'Produtos',
       icon: '📦',
-      // Adjust route path and feature check logic as needed
-      onPress: () => handleNavigation('/(home)/ProdutosListScreen', 'criarProduto')
+      onPress: () => handleNavigation(
+        '/(home)/gestor/produtoslistscreen' as RelativePathString
+      )
     },
     {
       id: 'gestores',
       title: 'Gestores',
       icon: '👤',
-      // Adjust route path as needed
-      onPress: () => handleNavigation('/(home)/GestoresListScreen')
+      onPress: () => handleNavigation(
+        '/(home)/gestor/gestoreslistscreen' as RelativePathString
+      )
     },
     {
       id: 'historico',
       title: 'Histórico Geral',
       icon: '📊',
-      // Adjust route path as needed
-      onPress: () => handleNavigation('/(home)/HistoricoListScreen') 
+      onPress: () => handleNavigation('/(home)/gestor/historicolistscreen' as RelativePathString) 
     }
   ];
 
-  // Function to get status color
-  const getStatusColor = (status) => {
-    switch (status) {
+  // Get status color for orders
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
       case 'aberto': return COLORS.accent;
       case 'em_andamento': return COLORS.secondary;
       case 'interrompido': return COLORS.warning;
@@ -152,12 +180,11 @@ const GestorDashboard = () => {
     }
     if (ordensError) {
       console.error('Error fetching orders:', ordensError);
-      // Decide if you want to alert the user or just log the error
-      // Alert.alert('Erro', 'Não foi possível carregar as ordens recentes.');
     }
   }, [gestorError, ordensError]);
 
-  if (isLoadingUserId || (isLoadingGestor && userId)) {
+  // Loading state
+  if (!initialCheckDone || isLoadingUserId || isLoadingAuth || (isLoadingGestor && userId)) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -169,8 +196,7 @@ const GestorDashboard = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        {/* Adjust field name based on actual Gestor data structure from API */}
-        <Text style={styles.greeting}>Olá, {gestor?.nome || 'Gestor'}</Text> 
+        <Text style={styles.greeting}>Olá, {gestorResponse?.nome || 'Gestor'}</Text> 
         <Text style={styles.subtitle}>Painel de Gestão</Text>
       </View>
 
@@ -197,8 +223,10 @@ const GestorDashboard = () => {
               <TouchableOpacity 
                 key={ordem.id}
                 style={styles.recentItem}
-                // Adjust route path and params for expo-router
-                onPress={() => router.push({ pathname: '/(home)/OrdemGestorDetailScreen', params: { orderId: ordem.id }})}
+                onPress={() => router.push({ 
+                  pathname: '/(home)/gestor/ordemgestordetailscreen' as RelativePathString,
+                  params: { orderId: ordem.id.toString() }
+                })}
               >
                 <View style={styles.recentItemHeader}>
                   <Text style={styles.recentItemTitle}>OP-{ordem.id}</Text>
@@ -207,7 +235,6 @@ const GestorDashboard = () => {
                   </View>
                 </View>
                 <Text style={styles.recentItemDesc}>
-                  {/* Adjust field names based on actual Order data structure */} 
                   {ordem.product?.name || 'Produto não especificado'} 
                   {ordem.quantity ? ` - Qtd: ${ordem.quantity}` : ''}
                 </Text>
@@ -219,8 +246,7 @@ const GestorDashboard = () => {
           
           <TouchableOpacity 
             style={styles.viewAllButton}
-            // Adjust route path for expo-router
-            onPress={() => handleNavigation('/(home)/OrdensGestorListScreen')}
+            onPress={() => handleNavigation('/(home)/ordensgestorlistscreen' as RelativePathString)}
           >
             <Text style={styles.viewAllText}>Ver Todas as Ordens</Text>
           </TouchableOpacity>
@@ -228,9 +254,8 @@ const GestorDashboard = () => {
 
         <TouchableOpacity 
           style={styles.createButton}
-          // Adjust route path and feature check logic as needed
           onPress={() => handleNavigation(
-            '/(home)/OrdemCreateScreen', 
+            '/(home)/gestor/ordemcreatescreen' as RelativePathString, 
             'criarOrdem', 
             'Para criar uma Ordem de Serviço, é necessário cadastrar Setores, Funcionários e Produtos primeiro.'
           )}
@@ -242,11 +267,10 @@ const GestorDashboard = () => {
   );
 };
 
-// Add styles here (assuming they are similar to the original file)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background, // Use color from constants
+    backgroundColor: COLORS.background,
   },
   centered: {
     flex: 1,
@@ -257,22 +281,22 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: COLORS.text?.secondary || '#666', // Use color from constants with fallback
+    color: COLORS.text?.secondary || '#666',
   },
   loadingIndicator: {
     padding: 20,
   },
   header: {
-    backgroundColor: COLORS.primary, // Use color from constants
+    backgroundColor: COLORS.primary,
     padding: 20,
-    paddingTop: 40, // Adjust as needed for status bar
+    paddingTop: 40,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
   greeting: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: COLORS.white, // Use color from constants
+    color: COLORS.white,
   },
   subtitle: {
     fontSize: 16,
@@ -291,7 +315,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   menuItem: {
-    width: '30%', // Adjust width as needed for layout
+    width: '30%',
     backgroundColor: COLORS.white,
     borderRadius: 15,
     padding: 15,
@@ -310,7 +334,7 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: COLORS.text?.primary || '#333', // Use color from constants with fallback
+    color: COLORS.text?.primary || '#333',
     textAlign: 'center',
   },
   recentSection: {
@@ -332,7 +356,7 @@ const styles = StyleSheet.create({
   },
   recentItem: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray || '#eee', // Use color from constants with fallback
+    borderBottomColor: COLORS.lightGray || '#eee',
     paddingVertical: 12,
     marginBottom: 10,
   },
@@ -395,4 +419,3 @@ const styles = StyleSheet.create({
 });
 
 export default GestorDashboard;
-
