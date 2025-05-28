@@ -11,8 +11,9 @@ const HistoricoListScreen = () => {
   const { orderId } = useLocalSearchParams();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const [parsedOrderId, setParsedOrderId] = useState<number | null>(null);
 
-  // Verificar autenticação do usuário
+  // Verificar autenticação do usuário e parsear orderId
   useEffect(() => {
     const checkUserAuth = async () => {
       try {
@@ -22,6 +23,16 @@ const HistoricoListScreen = () => {
           setInitialCheckDone(true);
           setTimeout(() => router.replace('/(login)/login'), 0);
           return;
+        }
+
+        // Parsear orderId se existir
+        if (orderId) {
+          const id = Number(orderId);
+          if (!isNaN(id)) {
+            setParsedOrderId(id);
+          } else {
+            Alert.alert('Erro', 'ID da ordem inválido');
+          }
         }
       } catch (error) {
         console.error('Falha ao verificar autenticação:', error);
@@ -35,7 +46,7 @@ const HistoricoListScreen = () => {
     };
 
     checkUserAuth();
-  }, [router]);
+  }, [router, orderId]);
 
   // Buscar histórico de produção
   const { 
@@ -44,16 +55,26 @@ const HistoricoListScreen = () => {
     error: historicoError, 
     refetch 
   } = useOrdersControllerListHistoricoProducao(
-    orderId ? Number(orderId) : 0,
+    parsedOrderId || 0, // Usar parsedOrderId ou 0 se não existir
     {
       query: {
-        queryKey: ['historicoProducao', orderId],
-        enabled: initialCheckDone,
+        queryKey: ['historicoProducao', parsedOrderId],
+        enabled: initialCheckDone && (parsedOrderId !== null || orderId === undefined),
+        onSuccess: (data) => {
+          console.log('Histórico carregado:', data);
+        },
+        onError: (error) => {
+          console.error('Erro ao carregar histórico:', error);
+        }
       }
     }
   );
 
-  const historicos = historicoResponse?.data || [];
+  const historicos = Array.isArray(historicoResponse) 
+    ? historicoResponse 
+    : historicoResponse?.data 
+    ? historicoResponse.data 
+    : [];
 
   // Função para formatar a data
   const formatDate = (dateString: string) => {
@@ -71,8 +92,16 @@ const HistoricoListScreen = () => {
   // Lidar com erros da API
   useEffect(() => {
     if (historicoError) {
-      console.error('Erro ao buscar histórico de produção:', historicoError);
-      Alert.alert('Erro', 'Não foi possível carregar o histórico de produção.');
+      console.error('Erro ao buscar histórico de produção:', {
+        message: historicoError.message,
+        response: historicoError.response?.data,
+        status: historicoError.response?.status
+      });
+      Alert.alert(
+        'Erro', 
+        historicoError.response?.data?.message || 
+        'Não foi possível carregar o histórico de produção.'
+      );
     }
   }, [historicoError]);
 
@@ -86,7 +115,10 @@ const HistoricoListScreen = () => {
   );
 
   const renderHistoricoItem = ({ item }) => (
-    <View style={styles.itemCard}>
+    <TouchableOpacity 
+      style={styles.itemCard}
+      
+    >
       <View style={styles.itemHeader}>
         <Text style={styles.itemTitle}>
           {item.tipo === 'status_change' ? 'Alteração de Status' : 
@@ -100,8 +132,15 @@ const HistoricoListScreen = () => {
       <View style={styles.itemDetails}>
         {item.ordem && (
           <Text style={styles.itemDetailText}>
-            <Text style={styles.itemDetailLabel}>Ordem: </Text>
-            OP-{item.ordem.id}
+            <Text style={styles.itemDetailLabel}>Ordem ID: </Text>
+            {item.ordem.id}
+          </Text>
+        )}
+        
+        {item.ordem?.orderNumber && (
+          <Text style={styles.itemDetailText}>
+            <Text style={styles.itemDetailLabel}>Número: </Text>
+            {item.ordem.orderNumber}
           </Text>
         )}
         
@@ -135,7 +174,7 @@ const HistoricoListScreen = () => {
         
         {item.motivoInterrupcao && (
           <Text style={styles.itemDetailText}>
-            <Text style={styles.itemDetailLabel}>Motivo de Interrupção: </Text>
+            <Text style={styles.itemDetailLabel}>Motivo: </Text>
             {item.motivoInterrupcao.descricao}
           </Text>
         )}
@@ -147,7 +186,7 @@ const HistoricoListScreen = () => {
           </Text>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   if (!initialCheckDone || isLoadingUserCheck || isLoadingHistorico) {
@@ -163,7 +202,7 @@ const HistoricoListScreen = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
-          {orderId ? `Histórico da Ordem #${orderId}` : 'Histórico Geral de Produção'}
+          {parsedOrderId ? `Histórico da Ordem #${parsedOrderId}` : 'Histórico Geral de Produção'}
         </Text>
       </View>
 
@@ -175,6 +214,11 @@ const HistoricoListScreen = () => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>Nenhum registro de histórico encontrado.</Text>
+            {!parsedOrderId && (
+              <Text style={styles.emptyHint}>
+                Selecione uma ordem específica para ver seu histórico
+              </Text>
+            )}
           </View>
         }
       />

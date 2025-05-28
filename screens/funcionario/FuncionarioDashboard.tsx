@@ -102,19 +102,25 @@ const FuncionarioDashboard = () => {
       id: 'perfil',
       title: 'Meu Perfil',
       icon: '👤',
-      onPress: () => handleNavigation('/(app_main)/funcionario/PerfilScreen')
+      onPress: () => handleNavigation('/(home)/funcionario/PerfilScreen')
     },
     {
       id: 'ordens',
       title: 'Minhas Ordens',
       icon: '📋',
-      onPress: () => handleNavigation('/(app_main)/funcionario/OrdensListScreen')
+      onPress: () => handleNavigation('/(home)/funcionario/OrdensListScreen')
     },
     {
       id: 'historico',
       title: 'Histórico',
       icon: '📊',
-      onPress: () => handleNavigation('/(app_main)/funcionario/HistoricoScreen')
+      onPress: () => handleNavigation('/(home)/funcionario/HistoricoScreen')
+    },
+     {
+      id: 'interromper',
+      title: 'Interromper Ordem',
+      icon: '⏸️',
+      onPress: () => handleNavigation('/(home)/funcionario/motivosinterrupcaoscreen')
     }
   ];
 
@@ -225,7 +231,7 @@ const FuncionarioDashboard = () => {
 
           <TouchableOpacity 
             style={styles.viewAllButton}
-            onPress={() => handleNavigation('/(app_main)/funcionario/OrdensListScreen')}
+            onPress={() => handleNavigation('/(home)/funcionario/OrdensListScreen')}
           >
             <Text style={styles.viewAllText}>Ver Todas as Ordens</Text>
           </TouchableOpacity>

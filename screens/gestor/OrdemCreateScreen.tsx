@@ -13,8 +13,9 @@ const OrdemCreateScreen = () => {
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   
   // Form fields
-  const [productCode, setProductCode] = useState('');
-  const [employeeCode, setEmployeeCode] = useState('');
+  const [productId, setProductId] = useState('');
+  const [funcionarioId, setFuncionarioId] = useState('');
+  const [maquinaId, setMaquinaId] = useState('');
   const [lotQuantity, setLotQuantity] = useState('');
   const [finalDestination, setFinalDestination] = useState('');
   
@@ -52,11 +53,14 @@ const OrdemCreateScreen = () => {
   const { 
     data: produtosResponse, 
     isLoading: isLoadingProdutos, 
-    error: produtosError 
+    error: produtosError,
+    refetch: refetchProdutos 
   } = useProductsControllerFindAll({
     query: {
-      queryKey: ['produtos'],
       enabled: initialCheckDone,
+      onSuccess: (data) => {
+        console.log('Dados completos de produtos:', JSON.stringify(data, null, 2));
+      }
     }
   });
 
@@ -64,29 +68,51 @@ const OrdemCreateScreen = () => {
   const { 
     data: funcionariosResponse, 
     isLoading: isLoadingFuncionarios, 
-    error: funcionariosError 
+    error: funcionariosError,
+    refetch: refetchFuncionarios 
   } = useFuncionarioControllerFindAll({
     query: {
-      queryKey: ['funcionarios'],
       enabled: initialCheckDone,
+      onSuccess: (data) => {
+        console.log('Dados completos de funcionários:', JSON.stringify(data, null, 2));
+      }
     }
   });
 
   // Update lists when data is loaded
   useEffect(() => {
-    if (produtosResponse?.data) {
-      setProdutos(produtosResponse.data);
+
+    // Verifica se a resposta existe e tem dados
+    if (produtosResponse) {
+      // Algumas APIs retornam os dados diretamente, outras em uma propriedade 'data'
+      const produtosData = produtosResponse.data || produtosResponse;
+      
+      if (Array.isArray(produtosData)) {
+        console.log('Produtos encontrados:', produtosData);
+        setProdutos(produtosData);
+      } else {
+        console.warn('Produtos não é um array:', produtosData);
+      }
     }
-    if (funcionariosResponse?.data) {
-      setFuncionarios(funcionariosResponse.data);
+
+    if (funcionariosResponse) {
+      const funcionariosData = funcionariosResponse.data || funcionariosResponse;
+      
+      if (Array.isArray(funcionariosData)) {
+        console.log('Funcionários encontrados:', funcionariosData);
+        setFuncionarios(funcionariosData);
+      } else {
+        console.warn('Funcionários não é um array:', funcionariosData);
+      }
     }
   }, [produtosResponse, funcionariosResponse]);
 
   // Create order mutation
   const { mutate: criarOrdem, isLoading: isCreatingOrder } = useOrdersControllerCreate({
     mutation: {
-      onSuccess: () => {
-        Alert.alert('Sucesso', 'Ordem de serviço criada com sucesso.', [
+      onSuccess: (data) => {
+        console.log('Ordem criada com sucesso:', data);
+        Alert.alert('Sucesso', 'Ordem de serviço criada com sucesso!', [
           { 
             text: 'OK', 
             onPress: () => router.push('/(home)/gestor/ordensgestorlistscreen') 
@@ -94,17 +120,21 @@ const OrdemCreateScreen = () => {
         ]);
       },
       onError: (error) => {
-        console.error('Erro ao criar ordem:', error);
+        console.error('Erro ao criar ordem:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status
+        });
         const errorMessage = error.response?.data?.message || 'Não foi possível criar a ordem. Verifique os dados.';
         Alert.alert('Erro', errorMessage);
       }
     }
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validate required fields
-    if (!productCode || !employeeCode || !lotQuantity || !finalDestination) {
-      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos.');
+    if (!productId || !funcionarioId || !lotQuantity || !finalDestination) {
+      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
@@ -120,34 +150,81 @@ const OrdemCreateScreen = () => {
       return;
     }
 
-    // Create order data
-    const orderData = {
-      productCode,
-      employeeCode,
-      lotQuantity: quantity,
-      finalDestination
-    };
+    try {
+      // Get token for authorization
+      const token = await AsyncStorage.getItem('access_token');
+      
+      if (!token) {
+        Alert.alert('Erro', 'Sessão expirada. Faça login novamente.');
+        router.replace('/(login)/login');
+        return;
+      }
 
-    criarOrdem({ data: orderData });
+     const produtoSelecionado = produtos.find(p => p.id.toString() === productId);
+      const funcionarioSelecionado = funcionarios.find(f => f.id.toString() === funcionarioId);
+
+      if (!produtoSelecionado || !funcionarioSelecionado) {
+        Alert.alert('Erro', 'Dados selecionados inválidos');
+        return;
+      }
+
+      const orderData = {
+        productCode: produtoSelecionado.code || produtoSelecionado.codigo || '',
+        employeeCode: funcionarioSelecionado.code || funcionarioSelecionado.codigo || '',
+        lotQuantity: quantity,
+        finalDestination: finalDestination
+      };
+
+      console.log('Dados da ordem sendo enviados:', orderData);
+
+  criarOrdem({ 
+    data: orderData,
+  });
+
+    } catch (error) {
+      console.error('Erro ao processar formulário:', error);
+      Alert.alert('Erro', 'Ocorreu um erro inesperado. Tente novamente.');
+    }
   };
 
-  // Handle API errors
-  useEffect(() => {
-    if (produtosError) {
-      console.error('Erro ao buscar produtos:', produtosError);
-      Alert.alert('Erro', 'Não foi possível carregar os produtos.');
-    }
-    if (funcionariosError) {
-      console.error('Erro ao buscar funcionários:', funcionariosError);
-      Alert.alert('Erro', 'Não foi possível carregar os funcionários.');
-    }
-  }, [produtosError, funcionariosError]);
-
-  if (!initialCheckDone || isLoadingUserCheck || isLoadingProdutos || isLoadingFuncionarios) {
+  if (!initialCheckDone || isLoadingUserCheck) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Carregando formulário...</Text>
+        <Text style={styles.loadingText}>Verificando autenticação...</Text>
+      </View>
+    );
+  }
+
+  if (isLoadingProdutos || isLoadingFuncionarios) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Carregando dados...</Text>
+      </View>
+    );
+  }
+
+  if ((!isLoadingProdutos && produtos.length === 0) || (!isLoadingFuncionarios && funcionarios.length === 0)) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Criar Nova Ordem de Serviço</Text>
+        </View>
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>
+            {produtos.length === 0 ? 'Nenhum produto disponível' : 'Nenhum funcionário disponível'}
+          </Text>
+          <TouchableOpacity 
+            style={styles.reloadButton}
+            onPress={() => {
+              refetchProdutos();
+              refetchFuncionarios();
+            }}
+          >
+            <Text style={styles.reloadButtonText}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -165,8 +242,8 @@ const OrdemCreateScreen = () => {
           <Text style={styles.label}>Produto *</Text>
           <View style={styles.pickerContainer}>
             <Picker
-              selectedValue={productCode}
-              onValueChange={setProductCode}
+              selectedValue={productId}
+              onValueChange={setProductId}
               style={styles.picker}
               dropdownIconColor={COLORS.primary}
             >
@@ -174,18 +251,18 @@ const OrdemCreateScreen = () => {
               {produtos.map((produto) => (
                 <Picker.Item 
                   key={produto.id} 
-                  label={`${produto.name} (${produto.code})`} 
-                  value={produto.code} 
+                  label={`${produto.name || produto.nome} (${produto.code || produto.codigo})`} 
+                  value={produto.id.toString()} 
                 />
               ))}
             </Picker>
           </View>
           
-          <Text style={styles.label}>Funcionário *</Text>
+          <Text style={styles.label}>Funcionário Responsável *</Text>
           <View style={styles.pickerContainer}>
             <Picker
-              selectedValue={employeeCode}
-              onValueChange={setEmployeeCode}
+              selectedValue={funcionarioId}
+              onValueChange={setFuncionarioId}
               style={styles.picker}
               dropdownIconColor={COLORS.primary}
             >
@@ -193,8 +270,8 @@ const OrdemCreateScreen = () => {
               {funcionarios.map((funcionario) => (
                 <Picker.Item 
                   key={funcionario.id} 
-                  label={`${funcionario.nome} (${funcionario.code})`} 
-                  value={funcionario.code} 
+                  label={`${funcionario.nome || funcionario.name} (${funcionario.code || funcionario.codigo})`} 
+                  value={funcionario.id.toString()} 
                 />
               ))}
             </Picker>
@@ -205,7 +282,6 @@ const OrdemCreateScreen = () => {
             style={styles.input}
             value={lotQuantity}
             onChangeText={(text) => {
-              // Allow only numbers
               const cleanedText = text.replace(/[^0-9]/g, '');
               setLotQuantity(cleanedText);
             }}
@@ -219,7 +295,7 @@ const OrdemCreateScreen = () => {
             style={styles.input}
             value={finalDestination}
             onChangeText={setFinalDestination}
-            placeholder="Informe o destino final"
+            placeholder="Informe o destino final do produto"
             maxLength={100}
           />
           
@@ -251,105 +327,113 @@ const OrdemCreateScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: COLORS.text?.secondary || '#666',
+    backgroundColor: Colors.light.background,
   },
   header: {
+    padding: 16,
     backgroundColor: COLORS.primary,
-    padding: 20,
-    paddingTop: 40,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: 'white',
   },
   content: {
     flex: 1,
     padding: 16,
   },
   formCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 10,
+    backgroundColor: 'white',
+    borderRadius: 8,
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.primary,
     marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray || '#eee',
-    paddingBottom: 8,
+    color: COLORS.primary,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: COLORS.text?.primary || '#333',
     marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: COLORS.lightGray || '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 16,
+    color: COLORS.black,
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: COLORS.lightGray || '#ccc',
-    borderRadius: 8,
+    borderColor: COLORS.lightGray,
+    borderRadius: 4,
     marginBottom: 16,
     overflow: 'hidden',
   },
   picker: {
-    height: 50,
     width: '100%',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+    borderRadius: 4,
+    padding: 12,
+    marginBottom: 16,
+    fontSize: 16,
   },
   submitButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 15,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 4,
     alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 10,
+    marginBottom: 12,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   submitButtonText: {
-    color: COLORS.white,
+    color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
   },
   cancelButton: {
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    paddingVertical: 15,
-    borderRadius: 8,
+    backgroundColor: COLORS.error,
+    padding: 16,
+    borderRadius: 4,
     alignItems: 'center',
   },
   cancelButtonText: {
-    color: COLORS.primary,
+    color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
   },
-  disabledButton: {
-    opacity: 0.6,
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    color: COLORS.black,
+  },
+  errorText: {
+    color: COLORS.error,
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  reloadButton: {
+    backgroundColor: COLORS.primary,
+    padding: 12,
+    borderRadius: 4,
+    minWidth: 150,
+  },
+  reloadButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

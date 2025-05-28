@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { COLORS } from '@/constants/cor';
 import { useProductsControllerFindAll } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 
-  // Refetch data when the screen is focused
-  import { useFocusEffect } from '@react-navigation/native';
 const ProdutosListScreen = () => {
   const router = useRouter();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -24,6 +24,9 @@ const ProdutosListScreen = () => {
       try {
         const token = await AsyncStorage.getItem('access_token');
         const userRole = await AsyncStorage.getItem('user_role');
+
+        console.log('Token:', token);
+        console.log('User Role:', userRole);
 
         if (!token || userRole !== 'gestao') {
           if (isMounted) {
@@ -56,21 +59,41 @@ const ProdutosListScreen = () => {
     refetch 
   } = useProductsControllerFindAll({
     query: {
-      queryKey: ['produtos'],
       enabled: !isLoadingUserCheck,
+      onSuccess: (data) => {
+        console.log('Dados recebidos com sucesso:', data);
+        setRefreshing(false);
+      },
+      onError: (error) => {
+        console.error('Erro ao buscar produtos:', error);
+        setRefreshing(false);
+      }
     }
   });
 
-  const produtos = produtosResponse?.data || [];
+  // Handle different response structures
+  const produtos = Array.isArray(produtosResponse) 
+    ? produtosResponse 
+    : produtosResponse?.data 
+    ? produtosResponse.data 
+    : [];
 
   // Handle API errors
   useEffect(() => {
     if (produtosError) {
-      console.error('Error fetching products:', produtosError);
-      Alert.alert('Erro', 'Não foi possível carregar a lista de produtos.');
+      console.error('Detalhes do erro:', {
+        message: produtosError.message,
+        response: produtosError.response?.data,
+        status: produtosError.response?.status
+      });
+      
+      Alert.alert(
+        'Erro', 
+        produtosError.response?.data?.message || 
+        'Não foi possível carregar a lista de produtos.'
+      );
     }
   }, [produtosError]);
-
 
   useFocusEffect(
     React.useCallback(() => {
@@ -79,6 +102,11 @@ const ProdutosListScreen = () => {
       }
     }, [isLoadingUserCheck, isMounted, refetch])
   );
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    refetch();
+  }, []);
 
   const handleNavigateToCreate = () => {
     if (isMounted) {
@@ -94,6 +122,15 @@ const ProdutosListScreen = () => {
       });
     }
   };
+
+  // Debug logs
+  console.log('Estado atual:', {
+    isLoadingUserCheck,
+    isLoadingProdutos,
+    produtosError,
+    produtosResponse,
+    produtos
+  });
 
   if (isLoadingUserCheck || isLoadingProdutos) {
     return (
@@ -121,6 +158,13 @@ const ProdutosListScreen = () => {
           data={produtos}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.primary]}
+            />
+          }
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.itemCard}
@@ -155,6 +199,8 @@ const ProdutosListScreen = () => {
           </TouchableOpacity>
         </View>
       )}
+
+      
     </View>
   );
 };
@@ -249,6 +295,19 @@ const styles = StyleSheet.create({
     color: COLORS.text?.secondary || '#666',
     textAlign: 'center',
     marginBottom: 20,
+  },
+  debugContainer: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    margin: 10,
+    borderRadius: 5,
+  },
+  debugTitle: {
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  debugText: {
+    fontSize: 12,
   },
 });
 

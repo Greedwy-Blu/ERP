@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
-import { Colors } from '@/constants/Colors';
 import { COLORS } from '@/constants/cor';
-import { useOrdersControllerFindOne, useOrdersControllerAtualizarStatus, useOrdersControllerListMotivosInterrupcao, useOrdersControllerCreateEtapa } from '@/api/generated';
+import { useOrdersControllerFindOne, useOrdersControllerAtualizarStatus } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 
@@ -44,26 +43,18 @@ const OrdemGestorDetailScreen = () => {
     isLoading: isLoadingOrdem, 
     error: ordemError, 
     refetch 
-  } = useOrdersControllerFindOne(
-    Number(orderId),
-    {
-      query: {
-        queryKey: ['order', orderId],
-        enabled: initialCheckDone && !!orderId,
+  } = useOrdersControllerFindOne(Number(orderId), {
+    query: {
+      queryKey: ['order', orderId],
+      enabled: initialCheckDone && !!orderId,
+      onSuccess: (data) => {
+        console.log('Detalhes da ordem carregados:', data);
+      },
+      onError: (error) => {
+        console.error('Erro ao carregar ordem:', error);
       }
     }
-  );
-
-  const ordem = ordemResponse?.data;
-
-  // Buscar motivos de interrupção
-  const { data: motivosResponse } = useOrdersControllerListMotivosInterrupcao({
-    query: {
-      queryKey: ['motivosInterrupcao'],
-      enabled: initialCheckDone,
-    }
   });
-  const motivos = motivosResponse?.data || [];
 
   // Hook para atualizar status
   const { mutate: atualizarStatus, isLoading: isUpdatingStatus } = useOrdersControllerAtualizarStatus({
@@ -80,22 +71,10 @@ const OrdemGestorDetailScreen = () => {
     }
   });
 
-  // Hook para criar etapa
-  const { mutate: criarEtapa, isLoading: isCreatingEtapa } = useOrdersControllerCreateEtapa({
-    mutation: {
-      onSuccess: () => {
-        Alert.alert('Sucesso', 'Nova etapa criada com sucesso.');
-        refetch();
-      },
-      onError: (error) => {
-        console.error('Erro ao criar etapa:', error);
-        const errorMessage = error.response?.data?.message || 'Não foi possível criar a etapa.';
-        Alert.alert('Erro', errorMessage);
-      }
-    }
-  });
+  // Extrair os dados da ordem corretamente
+  const ordem = ordemResponse?.data || ordemResponse;
 
-  // Funções de ação
+  // Função para iniciar a ordem
   const handleStartOrder = () => {
     if (!ordem || !orderId) return;
     
@@ -106,15 +85,18 @@ const OrdemGestorDetailScreen = () => {
         { text: 'Cancelar', style: 'cancel' },
         { 
           text: 'Confirmar', 
-          onPress: () => atualizarStatus({
-            id: Number(orderId),
-            data: { status: 'em_andamento' }
-          })
+          onPress: () => {
+            atualizarStatus({
+              id: Number(orderId),
+              data: { status: 'em_andamento' }
+            });
+          }
         }
       ]
     );
   };
 
+  // Função para interromper a ordem
   const handleInterruptOrder = () => {
     if (!ordem || !orderId) return;
     
@@ -124,6 +106,7 @@ const OrdemGestorDetailScreen = () => {
     });
   };
 
+  // Função para finalizar a ordem
   const handleFinishOrder = () => {
     if (!ordem || !orderId) return;
     
@@ -134,22 +117,15 @@ const OrdemGestorDetailScreen = () => {
         { text: 'Cancelar', style: 'cancel' },
         { 
           text: 'Confirmar', 
-          onPress: () => atualizarStatus({
-            id: Number(orderId),
-            data: { status: 'finalizado' }
-          })
+          onPress: () => {
+            atualizarStatus({
+              id: Number(orderId),
+              data: { status: 'finalizado' }
+            });
+          }
         }
       ]
     );
-  };
-
-  const handleAddEtapa = () => {
-    if (!ordem || !orderId) return;
-    
-    router.push({
-      pathname: '/(app_main)/gestor/ordemadetapascreen',
-      params: { orderId: orderId }
-    });
   };
 
   // Funções auxiliares
@@ -215,50 +191,18 @@ const OrdemGestorDetailScreen = () => {
     );
   }
 
-  const renderEtapaItem = ({ item, index }) => (
-    <View style={styles.etapaItem}>
-      <View style={styles.etapaHeader}>
-        <Text style={styles.etapaTitle}>{index + 1}. {item.nome}</Text>
-        <View style={[styles.etapaStatusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.etapaStatusText}>{item.status}</Text>
-        </View>
-      </View>
-      
-      <View style={styles.etapaDetails}>
-        <Text style={styles.etapaDetailText}>
-          <Text style={styles.etapaDetailLabel}>Funcionário: </Text>
-          {item.funcionario?.nome || 'Não atribuído'}
-        </Text>
-        
-        {item.startedAt && (
-          <Text style={styles.etapaDetailText}>
-            <Text style={styles.etapaDetailLabel}>Iniciado em: </Text>
-            {formatDate(item.startedAt)}
-          </Text>
-        )}
-        
-        {item.finishedAt && (
-          <Text style={styles.etapaDetailText}>
-            <Text style={styles.etapaDetailLabel}>Finalizado em: </Text>
-            {formatDate(item.finishedAt)}
-          </Text>
-        )}
-      </View>
-    </View>
-  );
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Detalhes da Ordem</Text>
       </View>
 
-      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView style={styles.content}>
         <View style={styles.orderCard}>
           <View style={styles.orderHeader}>
-            <Text style={styles.orderTitle}>OP-{ordem.id}</Text>
+            <Text style={styles.orderTitle}>{ordem.orderNumber || `OP-${ordem.id}`}</Text>
             <View style={[styles.statusBadge, { backgroundColor: getStatusColor(ordem.status) }]}>
-              <Text style={styles.statusText}>{ordem.status}</Text>
+              <Text style={styles.statusText}>{ordem.status.replace('_', ' ')}</Text>
             </View>
           </View>
           
@@ -272,56 +216,19 @@ const OrdemGestorDetailScreen = () => {
             
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Quantidade:</Text>
-              <Text style={styles.detailValue}>{ordem.quantity || 'Não especificada'}</Text>
+              <Text style={styles.detailValue}>{ordem.lotQuantity || 'Não especificada'}</Text>
             </View>
             
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Funcionário:</Text>
-              <Text style={styles.detailValue}>{ordem.funcionario?.nome || 'Não atribuído'}</Text>
-            </View>
-            
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Destino Final:</Text>
-              <Text style={styles.detailValue}>{ordem.finalDestination || 'Não especificado'}</Text>
+              <Text style={styles.detailValue}>{ordem.funcionarioResposavel?.nome || 'Não atribuído'}</Text>
             </View>
             
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Criado em:</Text>
-              <Text style={styles.detailValue}>{formatDate(ordem.createdAt)}</Text>
+              <Text style={styles.detailValue}>{formatDate(ordem.created_at)}</Text>
             </View>
-            
-            {ordem.updatedAt && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Atualizado em:</Text>
-                <Text style={styles.detailValue}>{formatDate(ordem.updatedAt)}</Text>
-              </View>
-            )}
           </View>
-          
-          {ordem.etapas?.length > 0 && (
-            <View style={styles.etapasSection}>
-              <Text style={styles.sectionTitle}>Etapas</Text>
-              {ordem.etapas.map((etapa, index) => (
-                <React.Fragment key={etapa.id}>
-                  {renderEtapaItem({ item: etapa, index })}
-                </React.Fragment>
-              ))}
-              
-              {ordem.status !== 'finalizado' && (
-                <TouchableOpacity 
-                  style={styles.addEtapaButton}
-                  onPress={handleAddEtapa}
-                  disabled={isCreatingEtapa}
-                >
-                  {isCreatingEtapa ? (
-                    <ActivityIndicator color={COLORS.white} size="small" />
-                  ) : (
-                    <Text style={styles.addEtapaButtonText}>+ Adicionar Etapa</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
           
           {/* Ações baseadas no status */}
           <View style={styles.actionsContainer}>
@@ -329,12 +236,16 @@ const OrdemGestorDetailScreen = () => {
               <TouchableOpacity 
                 style={[styles.actionButton, styles.startButton]}
                 onPress={handleStartOrder}
-                disabled={isUpdatingStatus}
+                disabled={isUpdatingStatus || !ordem.funcionarioResposavel}
               >
                 {isUpdatingStatus ? (
                   <ActivityIndicator color={COLORS.white} size="small" />
                 ) : (
-                  <Text style={styles.actionButtonText}>Iniciar Ordem</Text>
+                  <Text style={styles.actionButtonText}>
+                    {!ordem.funcionarioResposavel ? 
+                      'Atribua um funcionário primeiro' : 
+                      'Iniciar Ordem'}
+                  </Text>
                 )}
               </TouchableOpacity>
             )}
@@ -377,16 +288,6 @@ const OrdemGestorDetailScreen = () => {
               </TouchableOpacity>
             )}
           </View>
-          
-          <TouchableOpacity 
-            style={styles.historyButton}
-            onPress={() => router.push({ 
-              pathname: '/(app_main)/gestor/HistoricoListScreen', 
-              params: { orderId: orderId }
-            })}
-          >
-            <Text style={styles.historyButtonText}>Ver Histórico Completo</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -471,6 +372,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 12,
     fontWeight: 'bold',
+    textTransform: 'capitalize',
   },
   orderDetails: {
     marginBottom: 20,
@@ -499,66 +401,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.text?.secondary || '#666',
   },
-  etapasSection: {
-    marginBottom: 20,
-  },
-  etapaItem: {
-    backgroundColor: COLORS.lightGray || '#f5f5f5',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
-  },
-  etapaHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  etapaTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.text?.primary || '#333',
-  },
-  etapaStatusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  etapaStatusText: {
-    color: COLORS.white,
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  etapaDetails: {
-    marginTop: 4,
-    marginBottom: 10,
-  },
-  etapaDetailText: {
-    fontSize: 14,
-    color: COLORS.text?.secondary || '#666',
-    marginBottom: 4,
-  },
-  etapaDetailLabel: {
-    fontWeight: 'bold',
-    color: COLORS.text?.primary || '#333',
-  },
-  addEtapaButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  addEtapaButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
   actionsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginTop: 20,
-    marginBottom: 15,
   },
   actionButton: {
     paddingVertical: 12,
@@ -578,18 +424,6 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  historyButton: {
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  historyButtonText: {
-    color: COLORS.primary,
     fontWeight: 'bold',
     fontSize: 14,
   },

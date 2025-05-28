@@ -18,16 +18,14 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
-import { useAuthControllerLogin } from '@/api/generated';
+import { useAuthControllerRegister, useAuthControllerLogin } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
-// Definindo os tipos de rotas permitidas
 type AppRoute =
-  '/(home)/funcionario/funcionariodashboard' |
-  '/(home)/gestor/gestordashboard' |
-  '/(home)/guide/livroSelecao';
+  | '/(home)/funcionario/funcionariodashboard'
+  | '/(home)/gestor/gestordashboard';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -35,101 +33,124 @@ export default function LoginScreen() {
   const opacity = useSharedValue(0);
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Configuração do hook de login
-  const { mutate: login, isLoading: isLoginLoading, } = useAuthControllerLogin({
+  // Configuração dos hooks de API
+  const { mutate: register } = useAuthControllerRegister({
+    mutation: {
+      onError: (error) => {
+        setIsLoading(false);
+        Alert.alert(
+          'Erro no Registro',
+          error.response?.data?.message || 'Erro ao criar conta. Verifique seu código.'
+        );
+      },
+    },
+  });
+
+  const { mutate: login } = useAuthControllerLogin({
     mutation: {
       onSuccess: async (response) => {
         try {
-          if (response.access_token) {
-            await AsyncStorage.multiSet([
-              ['access_token', response.access_token],
-              ['user_role', response.role || ''],
-              ['user_id', response.sub],
-              ['user_code', response.code],
-             
-            ]);
-            await AsyncStorage.mergeItem(
-              'user_data',
-              JSON.stringify({
-                
-                user: response.user,
-                userAuth: response.userAuth,
-              })
-            );
+          await AsyncStorage.multiSet([
+            ['access_token', response.access_token],
+            ['user_role', response.role || ''],
+            ['user_id', response.sub],
+            ['user_code', response.code],
+          ]);
 
-          }
-
-          const role = response.role;
-
-          if (!role) {
-            throw new Error('Role não encontrada na resposta da API');
-          }
-
-          // Mapeamento de roles para rotas com tipos seguros
+          // Redireciona conforme o tipo de usuário
           const routeMap: Record<string, AppRoute> = {
             funcionario: '/(home)/funcionario/funcionariodashboard',
             gestao: '/(home)/gestor/gestordashboard',
-            default: '/(home)/guide/livroSelecao'
           };
 
-          const route = routeMap[role] || routeMap.default;
-          router.replace(route);
-          console.log('login', route)
+          if (response.role && routeMap[response.role]) {
+            router.replace(routeMap[response.role]);
+          }
         } catch (error) {
-          console.error('Erro no tratamento da resposta:', error);
-          Alert.alert(
-            'Erro',
-            'Ocorreu um erro ao processar a resposta do servidor. Por favor, tente novamente.'
-          );
+          console.error('Erro ao salvar dados:', error);
+          Alert.alert('Erro', 'Não foi possível completar o login.');
+        } finally {
+          setIsLoading(false);
         }
       },
       onError: (error) => {
-        console.error('Erro no login:', error);
+        setIsLoading(false);
         Alert.alert(
-          'Erro de Autenticação',
-          error.response?.message || 'Credenciais inválidas. Tente novamente.'
+          'Erro no Login',
+          error.response?.data?.message || 'Credenciais inválidas. Tente novamente.'
         );
-      }
-    }
+      },
+    },
   });
 
-  // Animação de entrada
+  const handleRegisterAndLogin = async () => {
+    if (!code.trim() || !password.trim()) {
+      Alert.alert('Atenção', 'Por favor, preencha todos os campos.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Primeiro faz o registro
+      await register({
+        data: {
+          code: code.trim(),
+          password: password.trim(),
+        },
+      });
+
+      // Depois faz o login automaticamente
+      await login({
+        data: {
+          code: code.trim(),
+          password: password.trim(),
+        },
+      });
+    } catch (error) {
+      setIsLoading(false);
+      console.error('Erro no processo:', error);
+    }
+  };
+
+  const handleSimpleLogin = async () => {
+    if (!code.trim() || !password.trim()) {
+      Alert.alert('Atenção', 'Por favor, preencha todos os campos.');
+      return;
+    }
+
+    setIsLoading(true);
+
+     try {
+      // Primeiro faz o registro
+      await register({
+        data: {
+          code: code.trim(),
+          password: password.trim(),
+        },
+      });
+
+      // Depois faz o login automaticamente
+      await login({
+        data: {
+          code: code.trim(),
+          password: password.trim(),
+        },
+      });
+    } catch (error) {
+      setIsLoading(false);
+      console.error('Erro no processo:', error);
+    }
+  };
+
+  // Animações
   useEffect(() => {
     scale.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
     opacity.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
   }, []);
-
-  const handleLogin = async () => {
-    try {
-      if (!code.trim() || !password.trim()) {
-        Alert.alert('Campos obrigatórios', 'Por favor, preencha todos os campos.');
-        return;
-      }
-
-      const loginData = {
-        code: code.trim(),
-        password: password.trim()
-      };
-
-      await login({ data: loginData });
-
-    } catch (error) {
-      console.error('Erro no login:', error);
-      let errorDetails = '';
-
-      if (error.response?.data?.message) {
-        errorDetails = Array.isArray(error.response.data.message)
-          ? error.response.data.message.join('\n')
-          : error.response.data.message;
-      }
-
-      Alert.alert(
-        'Erro de Login',
-        errorDetails || 'Ocorreu um erro durante o login. Por favor, tente novamente.'
-      );
-    }
-  };
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -149,21 +170,19 @@ export default function LoginScreen() {
 
       <View style={styles.main}>
         <View style={styles.content}>
-          <Text style={styles.title}>Login</Text>
-          <Text style={styles.subtitle}>Sempre bom ter você de volta!</Text>
-
+          <Text style={styles.title}>{isRegistering ? 'Registro' : 'Login'}</Text>
+          
           <TextInput
-            placeholder="code"
+            placeholder="Código"
             placeholderTextColor="#9ACBD0"
             style={styles.input}
             value={code}
             onChangeText={setCode}
             autoCapitalize="none"
-            autoCorrect={false}
           />
 
           <TextInput
-            placeholder="password"
+            placeholder="Senha"
             placeholderTextColor="#9ACBD0"
             style={styles.input}
             secureTextEntry
@@ -173,25 +192,23 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             style={styles.button}
-            onPress={handleLogin}
-            disabled={isLoginLoading}
+            onPress={isRegistering ? handleRegisterAndLogin : handleSimpleLogin}
+            disabled={isLoading}
           >
-            {isLoginLoading ? (
+            {isLoading ? (
               <ActivityIndicator color="#F2EFE7" />
             ) : (
-              <Text style={styles.buttonText}>Entrar</Text>
+              <Text style={styles.buttonText}>
+               Entrar
+              </Text>
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push('/')}>
-            <Text style={styles.cancelText}>Voltar</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {

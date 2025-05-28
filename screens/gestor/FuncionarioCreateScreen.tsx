@@ -25,7 +25,9 @@ const FuncionarioCreateScreen = () => {
         const token = await AsyncStorage.getItem('access_token');
         const userRole = await AsyncStorage.getItem('user_role');
 
-        if (!token || userRole !== 'gestor') {
+       
+
+        if (!token || userRole !== 'gestao') {
           setInitialCheckDone(true);
           setTimeout(() => router.replace('/(login)/login'), 0);
           return;
@@ -47,55 +49,67 @@ const FuncionarioCreateScreen = () => {
   // Hook for creating employee
   const { mutate: createFuncionario, isLoading: isCreating } = useFuncionarioControllerCreate({
     mutation: {
-      onSuccess: () => {
-        Alert.alert('Sucesso', 'Funcionário criado com sucesso.', [
+      onSuccess: (data) => {
+        console.log('Funcionário criado com sucesso:', data);
+        Alert.alert('Sucesso', 'Funcionário criado com sucesso!', [
           { text: 'OK', onPress: () => router.back() }
         ]);
       },
       onError: (error) => {
-        console.error('Error creating employee:', error);
-        const errorMessage = error.response?.data?.message || 'Não foi possível criar o funcionário. Verifique os dados e tente novamente.';
-        Alert.alert('Erro', errorMessage);
+        console.error('Erro ao criar funcionário:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status
+        });
+        Alert.alert(
+          'Erro', 
+          error.response?.data?.message || 'Falha ao criar funcionário. Verifique os dados e tente novamente.'
+        );
       }
     }
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validate required fields
     if (!code || !nome || !cargo || !salario || !password) {
-      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos, incluindo a senha.');
-      return;
-    }
-  
-    // Validate salary (must be a positive number)
-    const salarioNum = parseFloat(salario);
-    if (isNaN(salarioNum)){
-      Alert.alert('Salário Inválido', 'O salário deve ser um número válido.');
+      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos.');
       return;
     }
 
-    if (salarioNum < 0) {
-      Alert.alert('Salário Inválido', 'O salário deve ser um número positivo.');
-      return;
-    }
-  
-    // Validate password complexity
-    if (password.length < 6) {
-      Alert.alert('Senha Inválida', 'A senha deve ter pelo menos 6 caracteres.');
-      return;
-    }
-  
-    // Prepare data for API
-    const funcionarioData = {
+    // Validate salary (must be a positive number)
+    const salarioNum = parseFloat(salario);
+   
+
+    try {
+      // Get token for authorization
+      const token = await AsyncStorage.getItem('access_token');
+      
+      if (!token) {
+        Alert.alert('Erro', 'Sessão expirada. Faça login novamente.');
+        router.replace('/(login)/login');
+        return;
+      }
+
+      // Prepare data for API
+      const funcionarioData = {
       code,
-      nome,
-      cargo,
-      salario: salarioNum,
+      nome,       // Corrigido para 'nome' (em vez de 'name')
+      cargo,      // Corrigido para 'cargo' (em vez de 'position')
+      salario: salarioNum,  // Corrigido para 'salario' (em vez de 'salary')
       password
     };
-  
-    // Call the mutation
-    createFuncionario({ data: funcionarioData });
+
+      console.log('Dados sendo enviados:', funcionarioData);
+
+      // Call the mutation
+      createFuncionario({ 
+        data: funcionarioData,
+      });
+
+    } catch (error) {
+      console.error('Erro ao processar formulário:', error);
+      Alert.alert('Erro', 'Ocorreu um erro inesperado. Tente novamente.');
+    }
   };
 
   if (!initialCheckDone || isLoadingUserCheck) {
@@ -149,9 +163,7 @@ const FuncionarioCreateScreen = () => {
             style={styles.input}
             value={salario}
             onChangeText={(text) => {
-              // Allow only numbers and decimal point
               const cleanedText = text.replace(/[^0-9.]/g, '');
-              // Ensure only one decimal point
               const parts = cleanedText.split('.');
               if (parts.length <= 2) {
                 setSalario(cleanedText);
@@ -195,6 +207,7 @@ const FuncionarioCreateScreen = () => {
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

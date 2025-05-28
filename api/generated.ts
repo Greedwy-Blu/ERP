@@ -826,14 +826,14 @@ export const ordersControllerListMotivosInterrupcao = (
       
       
       return customInstance<void>(
-      {url: `/orders/motivos-interrupcao`, method: 'GET', signal
+      {url: `/orders/e`, method: 'GET', signal
     },
       options);
     }
   
 
 export const getOrdersControllerListMotivosInterrupcaoQueryKey = () => {
-    return [`/orders/motivos-interrupcao`] as const;
+    return [`/orders/e`] as const;
     }
 
     

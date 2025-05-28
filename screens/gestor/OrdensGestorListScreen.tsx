@@ -1,18 +1,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { COLORS } from '@/constants/cor';
 import { useOrdersControllerFindAll } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 const OrdensGestorListScreen = () => {
   const router = useRouter();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Check user authentication and role
+  // Check if user is a logged-in gestor
   useEffect(() => {
     const checkUserRole = async () => {
       try {
@@ -20,18 +19,14 @@ const OrdensGestorListScreen = () => {
         const userRole = await AsyncStorage.getItem('user_role');
 
         if (!token || userRole !== 'gestao') {
-          setInitialCheckDone(true);
-          setTimeout(() => router.replace('/(login)/login'), 0);
-          return;
+          router.replace('/(login)/login');
         }
       } catch (error) {
-        console.error('Failed to check user role:', error);
+        console.error('Failed to check user role from storage:', error);
         Alert.alert('Erro', 'Falha ao verificar permissões. Por favor, faça login novamente.');
-        setInitialCheckDone(true);
-        setTimeout(() => router.replace('/(login)/login'), 0);
+        router.replace('/(login)/login');
       } finally {
         setIsLoadingUserCheck(false);
-        setInitialCheckDone(true);
       }
     };
 
@@ -46,14 +41,55 @@ const OrdensGestorListScreen = () => {
     refetch 
   } = useOrdersControllerFindAll({
     query: {
-      queryKey: ['orders'],
-      enabled: initialCheckDone,
+      enabled: !isLoadingUserCheck,
+      onSuccess: (data) => {
+        console.log('Ordens carregadas:', data);
+        setRefreshing(false);
+      },
+      onError: (error) => {
+        console.error('Erro ao carregar ordens:', error);
+        setRefreshing(false);
+      }
     }
   });
 
-  const ordens = ordensResponse?.data || [];
+  // Handle different response structures
+  const ordens = Array.isArray(ordensResponse) 
+    ? ordensResponse 
+    : ordensResponse?.data 
+    ? ordensResponse.data 
+    : [];
 
-  // Helper functions
+  // Handle API errors
+  useEffect(() => {
+    if (ordensError) {
+      console.error('Detalhes do erro:', {
+        message: ordensError.message,
+        response: ordensError.response?.data,
+        status: ordensError.response?.status
+      });
+      
+      Alert.alert(
+        'Erro', 
+        ordensError.response?.data?.message || 
+        'Não foi possível carregar a lista de ordens.'
+      );
+    }
+  }, [ordensError]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    refetch();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLoadingUserCheck) {
+        refetch();
+      }
+    }, [refetch, isLoadingUserCheck])
+  );
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'aberto': return COLORS.accent;
@@ -76,63 +112,7 @@ const OrdensGestorListScreen = () => {
     });
   };
 
-  // Handle API errors
-  useEffect(() => {
-    if (ordensError) {
-      console.error('Error fetching orders:', ordensError);
-      Alert.alert('Erro', 'Não foi possível carregar as ordens de serviço.');
-    }
-  }, [ordensError]);
-
-  // Refetch data when screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      if (initialCheckDone) {
-        refetch();
-      }
-    }, [initialCheckDone, refetch])
-  );
-
-  const renderOrderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.orderCard}
-      onPress={() => router.push({ 
-        pathname: '/(home)/gestor/ordemgestordetailscreen', 
-        params: { orderId: item.id }
-      })}
-    >
-      <View style={styles.orderHeader}>
-        <Text style={styles.orderTitle}>OP-{item.id}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>{item.status}</Text>
-        </View>
-      </View>
-      
-      <View style={styles.orderDetails}>
-        <Text style={styles.orderDetailText}>
-          <Text style={styles.orderDetailLabel}>Produto: </Text>
-          {item.product?.name || 'Não especificado'}
-        </Text>
-        
-        <Text style={styles.orderDetailText}>
-          <Text style={styles.orderDetailLabel}>Quantidade: </Text>
-          {item.quantity || 'Não especificada'}
-        </Text>
-
-        <Text style={styles.orderDetailText}>
-          <Text style={styles.orderDetailLabel}>Funcionário: </Text>
-          {item.funcionario?.nome || 'Não atribuído'}
-        </Text>
-        
-        <Text style={styles.orderDetailText}>
-          <Text style={styles.orderDetailLabel}>Criado em: </Text>
-          {formatDate(item.createdAt)}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-
-  if (!initialCheckDone || isLoadingUserCheck || isLoadingOrdens) {
+  if (isLoadingUserCheck || isLoadingOrdens) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -157,15 +137,59 @@ const OrdensGestorListScreen = () => {
         data={ordens}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
-        renderItem={renderOrderItem}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+          />
+        }
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.orderCard}
+            onPress={() => router.push({ 
+              pathname: '/(home)/gestor/ordemgestordetailscreen', 
+              params: { orderId: item.id }
+            })}
+          >
+            <View style={styles.orderHeader}>
+              <Text style={styles.orderTitle}>{item.orderNumber}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                <Text style={styles.statusText}>{item.status}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.orderDetails}>
+              <Text style={styles.orderDetailText}>
+                <Text style={styles.orderDetailLabel}>Produto: </Text>
+                {item.product?.name || 'Não especificado'}
+              </Text>
+              
+              <Text style={styles.orderDetailText}>
+                <Text style={styles.orderDetailLabel}>Quantidade: </Text>
+                {item.lotQuantity || 'Não especificada'}
+              </Text>
+
+              <Text style={styles.orderDetailText}>
+                <Text style={styles.orderDetailLabel}>Funcionário: </Text>
+                {item.funcionarioResposavel?.nome || 'Não atribuído'}
+              </Text>
+              
+              <Text style={styles.orderDetailText}>
+                <Text style={styles.orderDetailLabel}>Criado em: </Text>
+                {formatDate(item.created_at)}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>Nenhuma ordem de serviço encontrada.</Text>
             <TouchableOpacity
-              style={styles.addFirstButton}
+              style={styles.createButton}
               onPress={() => router.push('/(home)/gestor/ordemcreatescreen')}
             >
-              <Text style={styles.addFirstButtonText}>Criar Primeira Ordem</Text>
+              <Text style={styles.createButtonText}>Criar Primeira Ordem</Text>
             </TouchableOpacity>
           </View>
         }
@@ -177,57 +201,52 @@ const OrdensGestorListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.light.background,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: COLORS.primary,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  createButton: {
+    backgroundColor: 'white',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+  },
+  createButtonText: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: COLORS.text?.secondary || '#666',
-  },
-  header: {
-    backgroundColor: COLORS.primary,
-    padding: 20,
-    paddingTop: 40,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.white,
-  },
-  createButton: {
-    backgroundColor: COLORS.accent || '#FFC107',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  createButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 14,
+    marginTop: 16,
+    color: COLORS.black,
   },
   listContent: {
     padding: 16,
-    paddingBottom: 32,
   },
   orderCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 10,
+    backgroundColor: 'white',
+    borderRadius: 8,
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   orderHeader: {
     flexDirection: 'row',
@@ -236,54 +255,44 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   orderTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: COLORS.text?.primary || '#333',
+    color: COLORS.black,
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 12,
   },
   statusText: {
-    color: COLORS.white,
+    color: 'white',
     fontSize: 12,
     fontWeight: 'bold',
+    textTransform: 'capitalize',
   },
   orderDetails: {
     marginTop: 8,
   },
   orderDetailText: {
     fontSize: 14,
-    color: COLORS.text?.secondary || '#666',
+    color: COLORS.black,
     marginBottom: 4,
   },
   orderDetailLabel: {
     fontWeight: 'bold',
-    color: COLORS.text?.primary || '#333',
+    color: COLORS.black,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 32,
   },
   emptyText: {
     fontSize: 16,
-    color: COLORS.text?.secondary || '#666',
+    color: COLORS.gray,
     textAlign: 'center',
-    marginBottom: 20,
-  },
-  addFirstButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  addFirstButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 16,
+    marginBottom: 16,
   },
 });
 

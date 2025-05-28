@@ -12,6 +12,4 @@ export interface CreateAuthDto {
   code: string;
   /** Senha do usuário */
   password: string;
-  /** Papel do usuário */
-  role: CreateAuthDtoRole;
 }

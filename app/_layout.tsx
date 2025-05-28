@@ -33,6 +33,7 @@ export default function RootLayout() {
           <Stack.Screen name="(home)/funcionario/historicoscreen" options={{ title: 'Histórico' }} />
           <Stack.Screen name="(home)/funcionario/perfilscreen" options={{ title: 'Perfil' }} />
 
+          <Stack.Screen name="(home)/funcionario/motivosinterrupcaoscreen" options={{ title: 'motivo interrupçâo' }} />
           <Stack.Screen name="(home)/gestor/gestordashboard" options={{ title: 'Dashboard Gestor' }} />
           {/* Adicionar outras rotas do gestor aqui conforme necessário */}
           <Stack.Screen name="(home)/gestor/funcionarioslistscreen" options={{ title: 'Funcionários' }} />
@@ -49,14 +50,11 @@ export default function RootLayout() {
           <Stack.Screen name="(home)/gestor/ordemcreatescreen" options={{ title: 'Criar Ordem' }} />
           <Stack.Screen name="(home)/gestor/gestoreslistscreen" options={{ title: 'Gestores' }} />
           <Stack.Screen name="(home)/gestor/historicolistscreen" options={{ title: 'Histórico (Gestor)' }} />
+          <Stack.Screen name="(home)/gestor/ordeminterruptscreen" options={{ title: 'motivo interrupçâo (Gestor)' }} />
+          <Stack.Screen name="(home)/gestor/etapasproducaoscreen" options={{ title: 'Etapas (Gestor)' }} />
+          <Stack.Screen name="(home)/gestor/rastreamentoscreen" options={{ title: 'Rastreamento (Gestor)' }} />
 
-          {/* Rotas do guia */}
-          <Stack.Screen name="(home)/guide/guiaHome" options={{ headerShown: false }} />
-          <Stack.Screen name="(home)/guide/livroSelecao" options={{ headerShown: false }} />
-          <Stack.Screen name="(home)/guide/funcionario/funcionario" options={{ headerShown: false }} />
-          <Stack.Screen name="(home)/guide/gestores/gestor" options={{ headerShown: false }} />
-
-          {/* Rotas de tabs */}
+           {/* Rotas de tabs */}
           <Stack.Screen name="(tabs)/index" options={{ headerShown: false }} /> 
           <Stack.Screen name="(tabs)/carregamento" options={{ headerShown: false }} /> 
           

@@ -25,7 +25,7 @@ const FuncionarioDetailScreen = () => {
         const token = await AsyncStorage.getItem('access_token');
         const userRole = await AsyncStorage.getItem('user_role');
 
-        if (!token || userRole !== 'gestor') {
+        if (!token || userRole !== 'gestao') {
           setInitialCheckDone(true);
           setTimeout(() => router.replace('/(login)/login'), 0);
           return;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { COLORS } from '@/constants/cor';
 import { useSectorsControllerFindAll } from '@/api/generated';
@@ -10,6 +10,7 @@ const SetoresListScreen = () => {
   const router = useRouter();
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -23,7 +24,10 @@ const SetoresListScreen = () => {
         const token = await AsyncStorage.getItem('access_token');
         const userRole = await AsyncStorage.getItem('user_role');
 
-        if (!token || userRole !== 'gestor') {
+        console.log('Token:', token);
+        console.log('User Role:', userRole);
+
+        if (!token || userRole !== 'gestao') {
           if (isMounted) {
             setTimeout(() => {
               router.replace('/(login)/login');
@@ -54,18 +58,39 @@ const SetoresListScreen = () => {
     refetch 
   } = useSectorsControllerFindAll({
     query: {
-      queryKey: ['sectors'],
       enabled: !isLoadingUserCheck,
+      onSuccess: (data) => {
+        console.log('Dados de setores recebidos com sucesso:', data);
+        setRefreshing(false);
+      },
+      onError: (error) => {
+        console.error('Erro ao buscar setores:', error);
+        setRefreshing(false);
+      }
     }
   });
 
-  const setores = setoresResponse?.data || [];
+  // Handle different response structures
+  const setores = Array.isArray(setoresResponse) 
+    ? setoresResponse 
+    : setoresResponse?.data 
+    ? setoresResponse.data 
+    : [];
 
   // Handle API errors
   useEffect(() => {
     if (setoresError) {
-      console.error('Error fetching sectors:', setoresError);
-      Alert.alert('Erro', 'Não foi possível carregar a lista de setores.');
+      console.error('Detalhes do erro:', {
+        message: setoresError.message,
+        response: setoresError.response?.data,
+        status: setoresError.response?.status
+      });
+      
+      Alert.alert(
+        'Erro', 
+        setoresError.response?.data?.message || 
+        'Não foi possível carregar a lista de setores.'
+      );
     }
   }, [setoresError]);
 
@@ -78,20 +103,34 @@ const SetoresListScreen = () => {
     }, [isLoadingUserCheck, refetch, isMounted])
   );
 
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    refetch();
+  }, [refetch]);
+
   const handleNavigateToCreate = () => {
     if (isMounted) {
-      router.push('/(app_main)/gestor/SetorCreateScreen');
+      router.push('/(home)/gestor/setorcreatescreen');
     }
   };
 
   const handleNavigateToDetail = (setorId: string) => {
     if (isMounted) {
       router.push({ 
-        pathname: '/(app_main)/gestor/SetorDetailScreen', 
+        pathname: '/(home)/gestor/setordetailscreen', 
         params: { setorId } 
       });
     }
   };
+
+  // Debug logs
+  console.log('Estado atual:', {
+    isLoadingUserCheck,
+    isLoadingSetores,
+    setoresError,
+    setoresResponse,
+    setores
+  });
 
   if (isLoadingUserCheck || isLoadingSetores) {
     return (
@@ -119,6 +158,13 @@ const SetoresListScreen = () => {
           data={setores}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.primary]}
+            />
+          }
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.itemCard}
@@ -153,6 +199,7 @@ const SetoresListScreen = () => {
   );
 };
 
+// Estilos permanecem os mesmos do seu código original
 const styles = StyleSheet.create({
   container: {
     flex: 1,

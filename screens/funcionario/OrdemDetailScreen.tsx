@@ -112,7 +112,7 @@ const OrdemDetailScreen = () => {
     
     setTimeout(() => {
       router.push({
-        pathname: '/(app_main)/funcionario/OrdemUpdateStatusScreen',
+        pathname: '/(home)/funcionario/ordemupdatestatusscree',
         params: { orderId: orderId.toString(), action: 'interrupt' }
       });
     }, 0);

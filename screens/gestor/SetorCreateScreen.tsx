@@ -28,7 +28,7 @@ const SetorCreateScreen = () => {
         const token = await AsyncStorage.getItem('access_token');
         const userRole = await AsyncStorage.getItem('user_role');
 
-        if (!token || userRole !== 'gestor') {
+        if (!token || userRole !== 'gestao') {
           if (isMounted) {
             setTimeout(() => {
               router.replace('/(login)/login');
@@ -85,9 +85,9 @@ const SetorCreateScreen = () => {
     }
 
     const setorData = {
-      code: code.toUpperCase(), // Garantir que o código seja em maiúsculas
+      
       name,
-      description: description || undefined,
+    
     };
 
     createSetor({ data: setorData });

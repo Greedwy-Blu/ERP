@@ -6,8 +6,23 @@ import { DependencyContext } from '@/context/DependencyContext';
 import { useQuery } from '@tanstack/react-query';
 import { useGestaoControllerFindOne, useOrdersControllerFindAll } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter, RelativePathString } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
+
+interface Order {
+  id: number;
+  status: string;
+  orderNumber?: string;
+  product?: {
+    name?: string;
+    code?: string;
+  };
+  lotQuantity?: number;
+  created_at?: string;
+  funcionarioResposavel?: {
+    nome?: string;
+  };
+}
 
 interface DependencyContextType {
   checkFeatureUnlocked?: (featureName: string) => boolean;
@@ -22,7 +37,6 @@ const GestorDashboard = () => {
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const { data, isLoading: isLoadingAuth } = useAuth();
 
-  // Get user ID from storage and validate session
   useEffect(() => {
     const fetchUserId = async () => {
       try {
@@ -36,7 +50,7 @@ const GestorDashboard = () => {
 
         if (!token || userRole !== 'gestao') {
           setInitialCheckDone(true);
-          setTimeout(() => router.replace('/(login)/login' as RelativePathString), 0);
+          setTimeout(() => router.replace('/(login)/login'), 0);
           return;
         }
         
@@ -46,13 +60,13 @@ const GestorDashboard = () => {
           console.error('User ID not found in storage.');
           Alert.alert('Erro', 'ID do usuário não encontrado. Por favor, faça login novamente.');
           setInitialCheckDone(true);
-          setTimeout(() => router.replace('/(login)/login' as RelativePathString), 0);
+          setTimeout(() => router.replace('/(login)/login'), 0);
         }
       } catch (error) {
         console.error('Failed to fetch user ID:', error);
         Alert.alert('Erro', 'Falha ao carregar dados do usuário. Por favor, faça login novamente.');
         setInitialCheckDone(true);
-        setTimeout(() => router.replace('/(login)/login' as RelativePathString), 0);
+        setTimeout(() => router.replace('/(login)/login'), 0);
       } finally {
         setIsLoadingUserId(false);
         setInitialCheckDone(true);
@@ -64,7 +78,6 @@ const GestorDashboard = () => {
     }
   }, [data, router]);
 
-  // Fetch manager data
   const { 
     data: gestorResponse, 
     isLoading: isLoadingGestor, 
@@ -76,24 +89,25 @@ const GestorDashboard = () => {
     }
   });
 
-  // Fetch all orders
   const { 
     data: ordensResponse, 
     isLoading: isLoadingOrdens, 
-    error: ordensError 
+    error: ordensError,
+    refetch: refetchOrdens
   } = useOrdersControllerFindAll({
     query: {
       queryKey: ['orders', userId],
       enabled: !!userId,
+      onSuccess: (data) => {
+        console.log('Ordens carregadas:', data);
+      },
+      onError: (error) => {
+        console.error('Erro ao carregar ordens:', error);
+      }
     },
   });
 
-  // Handle navigation with feature check
-  const handleNavigation = (
-    screen: RelativePathString,
-    featureName?: string,
-    prerequisiteMessage?: string
-  ) => {
+  const handleNavigation = (screen: string, featureName?: string, prerequisiteMessage?: string) => {
     if (featureName && checkFeatureUnlocked && !checkFeatureUnlocked(featureName)) {
       Alert.alert(
         'Ação Bloqueada',
@@ -101,67 +115,91 @@ const GestorDashboard = () => {
         [{ text: 'OK' }]
       );
     } else {
-      router.replace(screen);
-      console.log(`Navigating to ${screen}`);
-      
-      console.log(`Navigating to ${router}`);
+      router.push(screen);
     }
   };
 
-  // Recent orders sorted by date
-  const ordensRecentes = (ordensResponse?.data || [])
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  // Extrai as ordens corretamente independente da estrutura da resposta
+  const extractOrders = () => {
+    if (!ordensResponse) return [];
+    
+    if (Array.isArray(ordensResponse)) {
+      return ordensResponse;
+    }
+    
+    if (ordensResponse.data) {
+      return Array.isArray(ordensResponse.data) ? ordensResponse.data : [ordensResponse.data];
+    }
+    
+    return [];
+  };
+
+  const ordensRecentes = extractOrders()
+    .filter((ordem: Order) => ordem.created_at)
+    .sort((a: Order, b: Order) => {
+      const dateA = new Date(a.created_at!).getTime();
+      const dateB = new Date(b.created_at!).getTime();
+      return dateB - dateA;
+    })
     .slice(0, 3);
 
-  // Menu items configuration
   const menuItems = [
     {
       id: 'ordens',
       title: 'Ordens de Serviço',
       icon: '📋',
-      onPress: () => handleNavigation('/(home)/gestor/ordensgestorlistscreen' as RelativePathString) 
+      onPress: () => handleNavigation('/(home)/gestor/ordensgestorlistscreen') 
     },
     {
       id: 'funcionarios',
       title: 'Funcionários',
       icon: '👥',
-      onPress: () => handleNavigation(
-        '/(home)/gestor/funcionarioslistscreen' as RelativePathString
-      )
+      onPress: () => handleNavigation('/(home)/gestor/funcionarioslistscreen')
     },
     {
       id: 'setores',
       title: 'Setores',
       icon: '🏢',
-      onPress: () => handleNavigation(
-        '/(home)/gestor/setoreslistscreen' as RelativePathString
-      )
+      onPress: () => handleNavigation('/(home)/gestor/setoreslistscreen')
     },
     {
       id: 'produtos',
       title: 'Produtos',
       icon: '📦',
-      onPress: () => handleNavigation(
-        '/(home)/gestor/produtoslistscreen' as RelativePathString
-      )
+      onPress: () => handleNavigation('/(home)/gestor/produtoslistscreen')
     },
     {
       id: 'gestores',
       title: 'Gestores',
       icon: '👤',
-      onPress: () => handleNavigation(
-        '/(home)/gestor/gestoreslistscreen' as RelativePathString
-      )
+      onPress: () => handleNavigation('/(home)/gestor/gestoreslistscreen')
     },
     {
       id: 'historico',
       title: 'Histórico Geral',
       icon: '📊',
-      onPress: () => handleNavigation('/(home)/gestor/historicolistscreen' as RelativePathString) 
+      onPress: () => handleNavigation('/(home)/gestor/historicolistscreen') 
+    },
+    {
+      id: 'motivo',
+      title: 'Motivo de Interrupção',
+      icon: '⏸️',
+      onPress: () => handleNavigation('/(home)/gestor/ordeminterruptscreen') 
+    },
+    {
+      id: 'etapas',
+      title: 'Etapas de Produção',
+      icon: '🔧',
+      onPress: () => handleNavigation('/(home)/gestor/etapasproducaoscreen') 
+    },
+    {
+      id: 'rastreamento',
+      title: 'Rastreamento',
+      icon: '📍',
+      onPress: () => handleNavigation('/(home)/gestor/rastreamentoscreen') 
     }
   ];
 
-  // Get status color for orders
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'aberto': return COLORS.accent;
@@ -172,7 +210,6 @@ const GestorDashboard = () => {
     }
   };
 
-  // Handle API errors
   useEffect(() => {
     if (gestorError) {
       console.error('Error fetching manager data:', gestorError);
@@ -180,10 +217,18 @@ const GestorDashboard = () => {
     }
     if (ordensError) {
       console.error('Error fetching orders:', ordensError);
+      Alert.alert('Erro', 'Não foi possível carregar as ordens. Tente novamente.');
     }
   }, [gestorError, ordensError]);
 
-  // Loading state
+  useFocusEffect(
+    React.useCallback(() => {
+      if (userId) {
+        refetchOrdens();
+      }
+    }, [userId])
+  );
+
   if (!initialCheckDone || isLoadingUserId || isLoadingAuth || (isLoadingGestor && userId)) {
     return (
       <View style={styles.centered}>
@@ -196,7 +241,7 @@ const GestorDashboard = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>Olá, {gestorResponse?.nome || 'Gestor'}</Text> 
+        <Text style={styles.greeting}>Olá, {data?.gestao?.name || 'Gestor'}</Text> 
         <Text style={styles.subtitle}>Painel de Gestão</Text>
       </View>
 
@@ -224,20 +269,27 @@ const GestorDashboard = () => {
                 key={ordem.id}
                 style={styles.recentItem}
                 onPress={() => router.push({ 
-                  pathname: '/(home)/gestor/ordemgestordetailscreen' as RelativePathString,
+                  pathname: '/(home)/gestor/ordemgestordetailscreen',
                   params: { orderId: ordem.id.toString() }
                 })}
               >
                 <View style={styles.recentItemHeader}>
-                  <Text style={styles.recentItemTitle}>OP-{ordem.id}</Text>
+                  <Text style={styles.recentItemTitle}>{ordem.orderNumber || `OP-${ordem.id}`}</Text>
                   <View style={[styles.statusBadge, { backgroundColor: getStatusColor(ordem.status) }]}>
-                    <Text style={styles.statusText}>{ordem.status}</Text>
+                    <Text style={styles.statusText}>
+                      {ordem.status.replace('_', ' ').toLowerCase()}
+                    </Text>
                   </View>
                 </View>
                 <Text style={styles.recentItemDesc}>
                   {ordem.product?.name || 'Produto não especificado'} 
-                  {ordem.quantity ? ` - Qtd: ${ordem.quantity}` : ''}
+                  {ordem.lotQuantity ? ` - Qtd: ${ordem.lotQuantity}` : ''}
                 </Text>
+                {ordem.funcionarioResposavel?.nome && (
+                  <Text style={styles.recentItemDesc}>
+                    Responsável: {ordem.funcionarioResposavel.nome}
+                  </Text>
+                )}
               </TouchableOpacity>
             ))
           ) : (
@@ -246,7 +298,7 @@ const GestorDashboard = () => {
           
           <TouchableOpacity 
             style={styles.viewAllButton}
-            onPress={() => handleNavigation('/(home)/ordensgestorlistscreen' as RelativePathString)}
+            onPress={() => handleNavigation('/(home)/gestor/ordensgestorlistscreen')}
           >
             <Text style={styles.viewAllText}>Ver Todas as Ordens</Text>
           </TouchableOpacity>
@@ -255,10 +307,7 @@ const GestorDashboard = () => {
         <TouchableOpacity 
           style={styles.createButton}
           onPress={() => handleNavigation(
-            '/(home)/gestor/ordemcreatescreen' as RelativePathString, 
-            'criarOrdem', 
-            'Para criar uma Ordem de Serviço, é necessário cadastrar Setores, Funcionários e Produtos primeiro.'
-          )}
+            '/(home)/gestor/ordemcreatescreen'   )}
         >
           <Text style={styles.createButtonText}>+ Criar Nova Ordem de Serviço</Text>
         </TouchableOpacity>

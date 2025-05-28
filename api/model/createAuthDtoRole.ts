@@ -15,5 +15,5 @@ export type CreateAuthDtoRole = typeof CreateAuthDtoRole[keyof typeof CreateAuth
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const CreateAuthDtoRole = {
   funcionario: 'funcionario',
-  gestor: 'gestor',
+  gestor: 'gestao',
 } as const;

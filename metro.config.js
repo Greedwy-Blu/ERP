@@ -16,11 +16,7 @@ defaultConfig.resolver = {
   sourceExts: [...defaultConfig.resolver.sourceExts, 'svg'], // Adiciona SVG à lista de extensões de código-fonte
 };
 
-// Ignorar o módulo @lottiefiles/dotlottie-react
-defaultConfig.resolver.extraNodeModules = {
-  ...defaultConfig.resolver.extraNodeModules,
-  '@lottiefiles/dotlottie-react': require.resolve('lottie-react-native'),
-};
+
 
 // Aplicar a configuração do NativeWind
 module.exports = withNativeWind(defaultConfig, { input: './global.css' });

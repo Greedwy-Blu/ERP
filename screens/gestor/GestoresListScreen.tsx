@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { Colors } from '@/constants/Colors';
 import { COLORS } from '@/constants/cor';
 import { useGestaoControllerFindAll } from '@/api/generated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,20 +10,20 @@ const GestoresListScreen = () => {
   const [isLoadingUserCheck, setIsLoadingUserCheck] = useState(true);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
 
-  // Check if user is a logged-in gestor
+  // Verificar autenticação e papel do usuário
   useEffect(() => {
     const checkUserRole = async () => {
       try {
         const token = await AsyncStorage.getItem('access_token');
         const userRole = await AsyncStorage.getItem('user_role');
 
-        if (!token || userRole !== 'gestor') {
+        if (!token || userRole !== 'gestao') {
           setInitialCheckDone(true);
           setTimeout(() => router.replace('/(login)/login'), 0);
           return;
         }
       } catch (error) {
-        console.error('Failed to check user role from storage:', error);
+        console.error('Erro ao verificar papel do usuário:', error);
         Alert.alert('Erro', 'Falha ao verificar permissões. Por favor, faça login novamente.');
         setInitialCheckDone(true);
         setTimeout(() => router.replace('/(login)/login'), 0);
@@ -37,7 +36,7 @@ const GestoresListScreen = () => {
     checkUserRole();
   }, [router]);
 
-  // Fetch all managers
+  // Buscar todos os gestores
   const { 
     data: gestoresResponse, 
     isLoading: isLoadingGestores, 
@@ -47,20 +46,31 @@ const GestoresListScreen = () => {
     query: {
       queryKey: ['gestoresList'],
       enabled: initialCheckDone,
+      onSuccess: (data) => {
+        console.log('Gestores carregados:', data);
+      },
+      onError: (error) => {
+        console.error('Erro ao carregar gestores:', error);
+      }
     }
   });
 
-  const gestores = gestoresResponse?.data || [];
+  // Extrair os gestores corretamente da resposta
+  const gestores = Array.isArray(gestoresResponse) 
+    ? gestoresResponse 
+    : gestoresResponse?.data 
+    ? gestoresResponse.data 
+    : [];
 
-  // Handle API errors
+  // Lidar com erros da API
   useEffect(() => {
     if (gestoresError) {
-      console.error('Error fetching managers:', gestoresError);
+      console.error('Erro ao buscar gestores:', gestoresError);
       Alert.alert('Erro', 'Não foi possível carregar a lista de gestores.');
     }
   }, [gestoresError]);
 
-  // Refetch data when screen is focused
+  // Recarregar dados quando a tela receber foco
   useFocusEffect(
     useCallback(() => {
       if (initialCheckDone) {
@@ -73,16 +83,15 @@ const GestoresListScreen = () => {
     <TouchableOpacity
       style={styles.itemCard}
       onPress={() => {
-        // Descomente quando tiver uma tela de detalhes
-        // router.push({ 
-        //   pathname: '/(app_main)/gestor/GestorDetailScreen', 
-        //   params: { gestorId: item.id }
-        // })
+        router.push({ 
+          pathname: '/(home)/gestor/gestordetailscreen', 
+          params: { gestorId: item.id }
+        });
       }}
     >
       <View style={styles.itemHeader}>
-        <Text style={styles.itemTitle}>{item.nome}</Text>
-        <Text style={styles.itemSubtitle}>Código: {item.code}</Text>
+        <Text style={styles.itemTitle}>{item.name || 'Nome não especificado'}</Text>
+        <Text style={styles.itemSubtitle}>Código: {item.code || 'Não especificado'}</Text>
       </View>
       
       <View style={styles.itemDetails}>
@@ -90,12 +99,14 @@ const GestoresListScreen = () => {
           <Text style={styles.itemDetailLabel}>Email: </Text>
           {item.email || 'Não especificado'}
         </Text>
-        {item.telefone && (
-          <Text style={styles.itemDetailText}>
-            <Text style={styles.itemDetailLabel}>Telefone: </Text>
-            {item.telefone}
-          </Text>
-        )}
+        <Text style={styles.itemDetailText}>
+          <Text style={styles.itemDetailLabel}>Telefone: </Text>
+          {item.phone || 'Não especificado'}
+        </Text>
+        <Text style={styles.itemDetailText}>
+          <Text style={styles.itemDetailLabel}>Setor: </Text>
+          {item.department || 'Não especificado'}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -115,30 +126,29 @@ const GestoresListScreen = () => {
         <Text style={styles.headerTitle}>Gerenciar Gestores</Text>
         <TouchableOpacity 
           style={styles.createButton}
-          onPress={() => router.push('/(app_main)/gestor/GestorCreateScreen')}
+          onPress={() => router.push('/(home)/gestor/gestorcreatescreen')}
         >
           <Text style={styles.createButtonText}>+ Novo Gestor</Text>
         </TouchableOpacity>
       </View>
 
-      {gestores.length > 0 ? (
-        <FlatList
-          data={gestores}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          renderItem={renderGestorItem}
-        />
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Nenhum gestor cadastrado.</Text>
-          <TouchableOpacity
-            style={styles.addFirstButton}
-            onPress={() => router.push('/(app_main)/gestor/GestorCreateScreen')}
-          >
-            <Text style={styles.addFirstButtonText}>Adicionar Primeiro Gestor</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <FlatList
+        data={gestores}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={gestores.length === 0 ? styles.emptyContainer : styles.listContent}
+        renderItem={renderGestorItem}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Nenhum gestor cadastrado.</Text>
+            <TouchableOpacity
+              style={styles.addFirstButton}
+              onPress={() => router.push('/(home)/gestor/gestorcreatescreen')}
+            >
+              <Text style={styles.addFirstButtonText}>Adicionar Primeiro Gestor</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      />
     </View>
   );
 };
